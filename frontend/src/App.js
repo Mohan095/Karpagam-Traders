@@ -4,6 +4,7 @@ import './App.css';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import CalendarShowcase from './components/CalendarShowcase';
+import ProductsSection from './components/ProductsSection';
 import ContactForm from './components/ContactForm';
 import { auth, db, googleProvider } from './firebase';
 import Dashboard from './pages/Dashboard';
@@ -41,12 +42,82 @@ function App() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
+  // Default Products List (8 Daily, 8 Monthly, 8 Specialty)
+  const defaultProductsList = [
+    // Daily Products (8)
+    { id: 1, name: "Daily Calendar 1", price: 299, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Standard daily tear-off sheet calendar with auspicious Nalla Neram." },
+    { id: 2, name: "Daily Calendar 2", price: 399, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Deluxe daily calendar board print with spiritual artwork." },
+    { id: 3, name: "Daily Calendar 3", price: 249, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact daily Tamil calendar with vibrant typography." },
+    { id: 4, name: "Daily Calendar 4", price: 449, category: "daily", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Executive daily calendar sheet with gold foil binder header." },
+    { id: 5, name: "Daily Calendar 5", price: 199, category: "daily", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Traditional pocket size daily calendar for home & desk." },
+    { id: 6, name: "Daily Calendar 6", price: 349, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Religious temple daily tear-off calendar sheet." },
+    { id: 7, name: "Daily Calendar 7", price: 599, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Jumbo size daily calendar board with metal slider clip." },
+    { id: 8, name: "Daily Calendar 8", price: 229, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Classic Sivakasi printed tear-off calendar." },
+
+    // Monthly Products (8)
+    { id: 9, name: "Monthly Calendar 1", price: 499, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "12-Sheet Monthly wall calendar with high-gsm glossy paper." },
+    { id: 10, name: "Monthly Calendar 2", price: 599, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Landscape Monthly Tamil wall calendar with metallic tin rim." },
+    { id: 11, name: "Monthly Calendar 3", price: 449, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Corporate logo printed 12-page monthly wall sheet." },
+    { id: 12, name: "Monthly Calendar 4", price: 549, category: "monthly", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Double-sided monthly calendar with holiday highlighted list." },
+    { id: 13, name: "Monthly Calendar 5", price: 699, category: "monthly", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Royal Gold Edition monthly wall calendar 2027." },
+    { id: 14, name: "Monthly Calendar 6", price: 799, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Custom photo monthly wall calendar with custom branding." },
+    { id: 15, name: "Monthly Calendar 7", price: 349, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact 6-sheet monthly wall hanging calendar." },
+    { id: 16, name: "Monthly Calendar 8", price: 529, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Traditional Tamil Panchangam monthly wall calendar." },
+
+    // Specialty / Desk (8)
+    { id: 17, name: "Cake & Bakery Calendar 1", price: 650, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Specialty desk calendar designed for bakeries & cake shops." },
+    { id: 18, name: "Cake & Bakery Calendar 2", price: 750, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Triangular executive desk stand calendar with glossy varnish." },
+    { id: 19, name: "Specialty Calendar 3", price: 899, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Bespoke leatherette frame desk calendar with planner diary." },
+    { id: 20, name: "Specialty Calendar 4", price: 450, category: "specialty", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Miniature acrylic desk calendar for study tables." },
+    { id: 21, name: "Specialty Calendar 5", price: 950, category: "specialty", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Premium Gold embossed souvenir calendar & diary set." },
+    { id: 22, name: "Specialty Calendar 6", price: 320, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Eco-friendly recycled paper desk calendar." },
+    { id: 23, name: "Specialty Calendar 7", price: 480, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Magnetic fridge calendar sheet with tear-off memo pads." },
+    { id: 24, name: "Specialty Calendar 8", price: 390, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Pocket Tamil Panchangam calendar diary." }
+  ];
+
+  const [products, setProducts] = useState(defaultProductsList);
+  const [cart, setCart] = useState([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Product actions for Admin & Customer
+  const handleAddProduct = (newProd) => {
+    setProducts(prev => [newProd, ...prev]);
+  };
+
+  const handleDeleteProduct = (id) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleUpdateProductPrice = (id, newPrice) => {
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, price: newPrice } : p));
+  };
+
+  const handleUpdateProductName = (id, newName) => {
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
+  };
+
+  const handleUpdateProductImage = (id, newImage) => {
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, image: newImage } : p));
+  };
+
+  const handleAddToCart = (item) => {
+    setCart(prev => [...prev, item]);
+  };
+
+  const handleRemoveFromCart = (index) => {
+    setCart(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleClearCart = () => {
+    setCart([]);
+  };
+
   // Watch for /admin pathname to trigger overlays
   useEffect(() => {
     if (location.pathname === '/admin') {
       if (user) {
-        if (user.email !== 'admin023@gmail.com') {
-          showAlert('Restricted Access: admin023@gmail.com only.', 'warning');
+        if (user.email !== 'admin023@gmail.com' && user.email !== 'admin002@gmail.com' && user.role !== 'admin') {
+          showAlert('Restricted Access: Administrator login required.', 'warning');
           navigate('/');
         }
       } else {
@@ -189,25 +260,15 @@ function App() {
             role
           };
           setUser(loggedInUser);
-          localStorage.setItem('kp_session', JSON.stringify(loggedInUser));
         } catch (err) {
           console.error("Auth state fetch failed: ", err.message);
         }
       } else {
         setUser(null);
-        localStorage.removeItem('kp_session');
       }
     });
 
     return () => unsubscribe();
-  }, []);
-
-  // Load session cache on startup
-  useEffect(() => {
-    const cached = localStorage.getItem('kp_session');
-    if (cached) {
-      setUser(JSON.parse(cached));
-    }
   }, []);
 
   // Source protection & scroll reveal init
@@ -343,7 +404,6 @@ function App() {
       };
       
       setUser(loggedInUser);
-      localStorage.setItem('kp_session', JSON.stringify(loggedInUser));
       setAuthModalOpen(false);
       showAlert(`Welcome back, ${name}!`, 'success');
 
@@ -388,7 +448,6 @@ function App() {
       };
 
       setUser(loggedInUser);
-      localStorage.setItem('kp_session', JSON.stringify(loggedInUser));
       setAuthModalOpen(false);
       showAlert(`Registration Successful! Welcome, ${signupName}.`, 'success');
 
@@ -435,7 +494,6 @@ function App() {
       };
 
       setUser(loggedInUser);
-      localStorage.setItem('kp_session', JSON.stringify(loggedInUser));
 
       await addAuditLog(u.email, 'Sign In (Google)');
       setAuthModalOpen(false);
@@ -546,6 +604,56 @@ function App() {
     }
   };
 
+  const Footer = () => (
+    <footer>
+      <div className="footer-container">
+        <div className="footer-grid">
+          <div className="footer-col scroll-reveal-fade revealed">
+            <h3>Karpagam Traders</h3>
+            <p className="footer-desc">Premium printing services located in Sivakasi. Delivering custom, traditional, and modern prints that help your brand make a statement.</p>
+            <div className="social-icons">
+              <a href="https://wa.me/919566801402" target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-whatsapp"></i></a>
+              <a href="tel:+919566801402"><i className="fa-solid fa-phone"></i></a>
+              <a href="mailto:Karpagamtraderssivakasi@gmail.com"><i className="fa-solid fa-envelope"></i></a>
+            </div>
+          </div>
+
+          <div className="footer-col scroll-reveal-fade revealed">
+            <h4>Our Services</h4>
+            <ul className="footer-links">
+              <li><button onClick={() => navigate('/shop')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> Daily & Monthly Shop</button></li>
+              <li><button onClick={() => navigate('/showcase')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> Calendar Showcase</button></li>
+              <li><button onClick={() => navigate('/about')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> About Company</button></li>
+              <li><button onClick={() => navigate('/contact')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> Contact Support</button></li>
+            </ul>
+          </div>
+
+          <div className="footer-col scroll-reveal-fade revealed">
+            <h4>Contact Info</h4>
+            <ul className="footer-contact-info">
+              <li><i className="fa-solid fa-location-dot"></i> Sn Puram Road, Thiruthangal, Sivakasi, Tamil Nadu</li>
+              <li><i className="fa-solid fa-phone"></i> +91 9566801402<br />+91 9489691402</li>
+              <li><i className="fa-solid fa-envelope"></i> Karpagamtraderssivakasi@gmail.com</li>
+            </ul>
+          </div>
+
+          <div className="footer-col scroll-reveal-fade revealed">
+            <h4>Business Hours</h4>
+            <ul className="footer-hours">
+              <li><span>Monday - Saturday:</span> 9:00 AM - 8:00 PM</li>
+              <li><span>Sunday:</span> 10:00 AM - 6:00 PM</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="copyright">
+          <p>&copy; 2026 Karpagam Traders. All rights reserved.</p>
+          <p style={{ fontSize: '0.75rem', marginTop: '5px', color: 'rgba(255,255,255,0.4)' }}>Designed with premium aesthetics & micro-animations.</p>
+        </div>
+      </div>
+    </footer>
+  );
+
   const isAdminPage = location.pathname === '/admin';
 
   return (
@@ -579,6 +687,8 @@ function App() {
       {!isAdminPage && (
         <Navbar
           user={user}
+          cartCount={cart.length}
+          onOpenCart={() => setIsCartOpen(true)}
           onLogout={handleLogout}
           onOpenAuth={() => {
             setAuthModalOpen(true);
@@ -591,15 +701,48 @@ function App() {
         />
       )}
 
-      {/* 4. Content Page Sections (Routes) */}
+      {/* 4. Dedicated Page Views (Routes) */}
       <Routes>
-        {/* Main Landing Page Route */}
+        {/* HOME PAGE VIEW ONLY */}
         <Route path="/" element={
           <>
             <Hero />
+            
+            {/* Quick Banner Callout */}
+            <section style={{ padding: '60px 5%', textAlign: 'center', background: 'rgba(255,255,255,0.6)' }}>
+              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <h2 style={{ fontFamily: 'var(--font-heading)', color: 'var(--primary)', fontSize: '2rem', marginBottom: '12px', fontWeight: 800 }}>
+                  Welcome to Karpagam Traders Sivakasi
+                </h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: 1.7, marginBottom: '24px' }}>
+                  Sivakasi's premier offset printing press specializing in Tear-off Daily Tamil Calendars, 12-Sheet Monthly Wall Calendars, customized business cards, and diaries.
+                </p>
+                <div style={{ display: 'flex', gap: '14px', justifyContent: 'center' }}>
+                  <button 
+                    onClick={() => navigate('/shop')} 
+                    style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '12px 28px', borderRadius: '30px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 15px rgba(139,0,0,0.2)' }}
+                  >
+                    <i className="fa-solid fa-store" style={{ marginRight: '8px' }}></i> Browse Shop & Products
+                  </button>
+                  <button 
+                    onClick={() => navigate('/about')} 
+                    style={{ background: 'white', color: 'var(--primary)', border: '1.5px solid var(--primary)', padding: '12px 24px', borderRadius: '30px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Learn About Us
+                  </button>
+                </div>
+              </div>
+            </section>
 
-            {/* About Section */}
-            <section id="about">
+            {/* Common Footer */}
+            <Footer />
+          </>
+        } />
+
+        {/* ABOUT PAGE VIEW ONLY */}
+        <Route path="/about" element={
+          <>
+            <section id="about" style={{ padding: '80px 5%', minHeight: '75vh' }}>
               <div className="section-title scroll-reveal-fade revealed">
                 <h2>About Karpagam Traders</h2>
                 <p>Your trusted partner for all printing needs in Sivakasi</p>
@@ -655,87 +798,76 @@ function App() {
               </div>
             </section>
 
-            {/* Showcase Section */}
-            <CalendarShowcase
-              onOpenMonthlyModal={() => {
-                setMonthlyModalOpen(true);
-                setMonthlyPreview('cover');
-              }}
-              onOpenDailyModal={() => {
-                setDailyModalOpen(true);
-                setDailyPreview('board');
-              }}
-            />
+            <Footer />
+          </>
+        } />
 
-            {/* Contact Form Inquiry Section */}
+        {/* SHOWCASE PAGE VIEW ONLY */}
+        <Route path="/showcase" element={
+          <>
+            <div style={{ paddingTop: '40px' }}>
+              <CalendarShowcase
+                onOpenMonthlyModal={() => {
+                  setMonthlyModalOpen(true);
+                  setMonthlyPreview('cover');
+                }}
+                onOpenDailyModal={() => {
+                  setDailyModalOpen(true);
+                  setDailyPreview('board');
+                }}
+              />
+            </div>
+            <Footer />
+          </>
+        } />
+
+        {/* SHOP PAGE VIEW ONLY */}
+        <Route path="/shop" element={
+          <>
+            <ProductsSection 
+              products={products}
+              cart={cart}
+              onAddToCart={handleAddToCart}
+              onRemoveFromCart={handleRemoveFromCart}
+              onClearCart={handleClearCart}
+              isCartOpen={isCartOpen}
+              onOpenCart={() => setIsCartOpen(true)}
+              onCloseCart={() => setIsCartOpen(false)}
+              showAlert={showAlert}
+            />
+            <Footer />
+          </>
+        } />
+
+        {/* CONTACT PAGE VIEW ONLY */}
+        <Route path="/contact" element={
+          <>
             <ContactForm
               selectedService={selectedService}
               onClearService={() => setSelectedService('')}
               showAlert={showAlert}
             />
-
-            {/* Footer */}
-            <footer>
-              <div className="footer-container">
-                <div className="footer-grid">
-                  <div className="footer-col scroll-reveal-fade revealed">
-                    <h3>Karpagam Traders</h3>
-                    <p className="footer-desc">Premium printing services located in Sivakasi. Delivering custom, traditional, and modern prints that help your brand make a statement.</p>
-                    <div className="social-icons">
-                      <a href="https://wa.me/919566801402" target="_blank" rel="noopener noreferrer"><i className="fa-brands fa-whatsapp"></i></a>
-                      <a href="tel:+919566801402"><i className="fa-solid fa-phone"></i></a>
-                      <a href="mailto:Karpagamtraderssivakasi@gmail.com"><i className="fa-solid fa-envelope"></i></a>
-                    </div>
-                  </div>
-
-                  <div className="footer-col scroll-reveal-fade revealed">
-                    <h4>Our Services</h4>
-                    <ul className="footer-links">
-                      <li><a href="#calendar-section"><i className="fa-solid fa-chevron-right"></i> Calendar Printing</a></li>
-                      <li><a href="#contact"><i className="fa-solid fa-chevron-right"></i> Business Cards</a></li>
-                      <li><a href="#contact"><i className="fa-solid fa-chevron-right"></i> Brochures & Flyers</a></li>
-                      <li><a href="#contact"><i className="fa-solid fa-chevron-right"></i> Wedding Cards</a></li>
-                      <li><a href="#contact"><i className="fa-solid fa-chevron-right"></i> Banners & Posters</a></li>
-                      <li><a href="#contact"><i className="fa-solid fa-chevron-right"></i> Custom Printing</a></li>
-                    </ul>
-                  </div>
-
-                  <div className="footer-col scroll-reveal-fade revealed">
-                    <h4>Contact Info</h4>
-                    <ul className="footer-contact-info">
-                      <li><i className="fa-solid fa-location-dot"></i> Sn Puram Road, Thiruthangal, Sivakasi, Tamil Nadu</li>
-                      <li><i className="fa-solid fa-phone"></i> +91 9566801402<br />+91 9489691402</li>
-                      <li><i className="fa-solid fa-envelope"></i> Karpagamtraderssivakasi@gmail.com</li>
-                    </ul>
-                  </div>
-
-                  <div className="footer-col scroll-reveal-fade revealed">
-                    <h4>Business Hours</h4>
-                    <ul className="footer-hours">
-                      <li><span>Monday - Saturday:</span> 9:00 AM - 8:00 PM</li>
-                      <li><span>Sunday:</span> 10:00 AM - 6:00 PM</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="copyright">
-                  <p>&copy; 2026 Karpagam Traders. All rights reserved.</p>
-                  <p style={{ fontSize: '0.75rem', marginTop: '5px', color: 'rgba(255,255,255,0.4)' }}>Designed with premium aesthetics & micro-animations.</p>
-                </div>
-              </div>
-            </footer>
+            <Footer />
           </>
         } />
 
         {/* Dedicated Admin Dashboard Route */}
         <Route path="/admin" element={
-          user && user.email === 'admin023@gmail.com' ? (
-            <Dashboard onLogout={handleLogout} />
+          user && (user.email === 'admin023@gmail.com' || user.email === 'admin002@gmail.com' || user.role === 'admin') ? (
+            <Dashboard 
+              products={products}
+              onAddProduct={handleAddProduct}
+              onDeleteProduct={handleDeleteProduct}
+              onUpdateProductPrice={handleUpdateProductPrice}
+              onUpdateProductName={handleUpdateProductName}
+              onUpdateProductImage={handleUpdateProductImage}
+              onLogout={handleLogout} 
+            />
           ) : (
             <div style={{ padding: '80px 24px', textAlign: 'center', minHeight: '80vh', backgroundColor: 'var(--secondary-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <i className="fa-solid fa-lock" style={{ fontSize: '3.5rem', color: 'var(--primary)', marginBottom: '20px' }}></i>
               <h2 style={{ fontFamily: 'var(--font-heading)', color: 'var(--primary)', marginBottom: '10px', fontSize: '2rem', fontWeight: 800 }}>Restricted Access</h2>
-              <p style={{ color: 'var(--text-muted)', maxWidth: '450px', margin: '0 auto 20px', fontSize: '1rem', lineHeight: 1.5 }}>Only the designated administrator (admin023@gmail.com) can access this page.</p>
+              <p style={{ color: 'var(--text-muted)', maxWidth: '450px', margin: '0 auto 20px', fontSize: '1rem', lineHeight: 1.5 }}>Administrator credentials required to access this dashboard.</p>
               <button className="auth-btn" onClick={() => { setAuthTab('login'); setAuthModalOpen(true); }} style={{ marginTop: '20px', borderRadius: '30px', padding: '12px 30px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 0, 0, 0.15)' }}>Log In as Admin</button>
             </div>
           )

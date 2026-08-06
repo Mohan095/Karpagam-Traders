@@ -12,7 +12,6 @@ const Login = ({ onLoginSuccess }) => {
     setLoading(true);
     try {
       const data = await apiService.login(values.username, values.password);
-      localStorage.setItem('admin_token', data.access_token);
       onLoginSuccess();
       message.success('Authenticated successfully. Welcome back!');
       navigate('/dashboard');
