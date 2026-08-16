@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { db } from '../firebase';
+import apiService from '../api';
 
 function ProductsSection({ 
   products, 
@@ -78,7 +80,7 @@ function ProductsSection({
 
     onAddToCart(cartItem);
     setOptionsModalOpen(false);
-    showAlert(`${selectedProduct.name} (${selectedQuality}, ${selectedSize}) added to cart!`, 'success');
+    if (showAlert) showAlert(`${selectedProduct.name} (${selectedQuality}, ${selectedSize}) added to cart!`, 'success');
   };
 
   const cartTotal = cart.reduce((acc, item) => acc + item.price, 0);
@@ -88,21 +90,92 @@ function ProductsSection({
   const monthlyProducts = products.filter(p => p.category === 'monthly');
   const specialtyProducts = products.filter(p => p.category === 'specialty');
 
-  const handleProceedPayment = (e) => {
+  const handleSendWhatsAppOrder = async (e) => {
     e.preventDefault();
     if (cart.length === 0) {
-      showAlert("Your cart is empty!", "warning");
+      if (showAlert) showAlert("Your cart is empty!", "warning");
       return;
     }
     if (!payName.trim() || !payMobile.trim() || !payAddress.trim()) {
-      showAlert("Please fill in all delivery details.", "error");
+      if (showAlert) showAlert("Please fill in all delivery details.", "error");
       return;
     }
-    setQrGenerated(true);
-    showAlert("Payment QR Code generated successfully!", "success");
-  };
 
-  const handleCompleteOrder = () => {
+    const itemsSummary = cart.map(item => `• *${item.name}* (${item.quality}, ${item.size}) - ₹${item.price}`).join('\n');
+    const waMessage = 
+      `*NEW CALENDAR ORDER - KARPAGAM TRADERS*\n` +
+      `----------------------------------------\n` +
+      `👤 *Customer Name:* ${payName}\n` +
+      `📱 *Mobile:* ${payMobile}\n` +
+      `📧 *Email:* ${payEmail || 'N/A'}\n` +
+      `📍 *Address:* ${payAddress}\n` +
+      `----------------------------------------\n` +
+      `🛒 *Ordered Items (${cart.length}):*\n${itemsSummary}\n` +
+      `----------------------------------------\n` +
+      `💰 *Total Amount:* ₹${cartTotal}\n` +
+      `----------------------------------------\n` +
+      `Please confirm my order and share payment details. Thank you!`;
+
+    // 1. Open WhatsApp with prefilled message
+    const whatsappUrl = `https://wa.me/919566801402?text=${encodeURIComponent(waMessage)}`;
+    window.open(whatsappUrl, '_blank');
+
+    const orderPayload = {
+      name: payName || 'Customer',
+      phone: payMobile || '',
+      email: payEmail || '',
+      service: `Shop Order via WhatsApp (₹${cartTotal})`,
+      message: `Items:\n${itemsSummary}\nDelivery Address: ${payAddress}`
+    };
+
+    // 2. Log Order to Python FastAPI backend
+    try {
+      await fetch('http://127.0.0.1:8000/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload)
+      });
+    } catch (err) {
+      console.warn("Python backend order logging error:", err);
+    }
+
+    // 3. Save Order to Firebase Firestore
+    if (db) {
+      try {
+        const now = new Date();
+        const timestampStr = now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0') + ' ' +
+          String(now.getHours()).padStart(2, '0') + ':' +
+          String(now.getMinutes()).padStart(2, '0') + ':' +
+          String(now.getSeconds()).padStart(2, '0');
+
+        // Customer Inquiry Document
+        await db.collection("customer_inquiries").add({
+          name: orderPayload.name,
+          phone: orderPayload.phone,
+          email: orderPayload.email,
+          service: orderPayload.service,
+          message: orderPayload.message,
+          timestamp: timestampStr,
+          date: timestampStr,
+          status: "Order via WhatsApp"
+        });
+
+        // Audit & History Activity Document
+        await db.collection("history").add({
+          email: orderPayload.email || orderPayload.name,
+          event: `Placed Shop Order via WhatsApp (₹${cartTotal})`,
+          activity: `Placed Shop Order via WhatsApp (₹${cartTotal}) by ${orderPayload.name}`,
+          user: orderPayload.name,
+          timestamp: timestampStr,
+          type: "success"
+        });
+      } catch (fbErr) {
+        console.warn("Firebase order save warning:", fbErr);
+      }
+    }
+
     onClearCart();
     setPaymentModalOpen(false);
     handleCloseCartDrawer();
@@ -111,7 +184,7 @@ function ProductsSection({
     setPayEmail('');
     setPayMobile('');
     setPayAddress('');
-    showAlert("Order placed successfully! Thank you for choosing Karpagam Traders.", "success");
+    if (showAlert) showAlert("Order details sent via WhatsApp! Thank you for choosing Karpagam Traders.", "success");
   };
 
   // Render individual product card WITHOUT internal < > icons on the image
@@ -435,129 +508,77 @@ function ProductsSection({
             </div>
 
             <div className="payment-modal-body">
-              {!qrGenerated ? (
-                <form onSubmit={handleProceedPayment} className="delivery-form-grid">
-                  <div className="form-group-full">
-                    <label>Full Name *</label>
-                    <input 
-                      type="text" 
-                      required 
-                      placeholder="e.g. Full Name" 
-                      value={payName}
-                      onChange={(e) => setPayName(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group-half">
-                    <label>Email Address</label>
-                    <input 
-                      type="email" 
-                      placeholder="customer@gmail.com" 
-                      value={payEmail}
-                      onChange={(e) => setPayEmail(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group-half">
-                    <label>Mobile Number *</label>
-                    <input 
-                      type="tel" 
-                      required 
-                      pattern="[0-9]{10}"
-                      placeholder="10-digit mobile number" 
-                      value={payMobile}
-                      onChange={(e) => setPayMobile(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group-full">
-                    <label>Delivery Address *</label>
-                    <textarea 
-                      required 
-                      rows="3" 
-                      placeholder="Full delivery address with pincode..."
-                      value={payAddress}
-                      onChange={(e) => setPayAddress(e.target.value)}
-                    ></textarea>
-                  </div>
-
-                  <div className="form-group-full">
-                    <label>Select Payment Method:</label>
-                    <div className="pay-methods-flex">
-                      {[
-                        { id: 'gpay', name: 'Google Pay', icon: 'fa-google-pay' },
-                        { id: 'phonepe', name: 'PhonePe', icon: 'fa-mobile-screen-button' },
-                        { id: 'paytm', name: 'Paytm UPI', icon: 'fa-wallet' },
-                        { id: 'qrcode', name: 'Scan QR Code', icon: 'fa-qrcode' }
-                      ].map(m => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          className={`pay-method-chip ${payMethod === m.id ? 'active' : ''}`}
-                          onClick={() => setPayMethod(m.id)}
-                        >
-                          <i className={`fa-solid ${m.icon}`}></i> {m.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="order-summary-box">
-                    <span>Items Total ({cart.length}):</span>
-                    <strong>₹{cartTotal}</strong>
-                  </div>
-
-                  <button type="submit" className="btn-generate-qr">
-                    <i className="fa-solid fa-qrcode"></i> Generate Payment QR Code (₹{cartTotal})
-                  </button>
-                </form>
-              ) : (
-                <div className="qr-checkout-view">
-                  <div className="qr-code-box">
-                    <div className="qr-border-wrap">
-                      <svg width="180" height="180" viewBox="0 0 180 180" fill="none">
-                        <rect width="180" height="180" rx="12" fill="white" />
-                        <rect x="15" y="15" width="40" height="40" fill="#8b0000" />
-                        <rect x="23" y="23" width="24" height="24" fill="white" />
-                        <rect x="29" y="29" width="12" height="12" fill="#8b0000" />
-
-                        <rect x="125" y="15" width="40" height="40" fill="#8b0000" />
-                        <rect x="133" y="23" width="24" height="24" fill="white" />
-                        <rect x="139" y="29" width="12" height="12" fill="#8b0000" />
-
-                        <rect x="15" y="125" width="40" height="40" fill="#8b0000" />
-                        <rect x="23" y="133" width="24" height="24" fill="white" />
-                        <rect x="29" y="139" width="12" height="12" fill="#8b0000" />
-
-                        <rect x="70" y="20" width="15" height="15" fill="#2c2523" />
-                        <rect x="95" y="20" width="15" height="25" fill="#2c2523" />
-                        <rect x="70" y="45" width="25" height="15" fill="#2c2523" />
-                        <rect x="20" y="70" width="30" height="15" fill="#2c2523" />
-                        <rect x="60" y="70" width="20" height="20" fill="#8b0000" />
-                        <rect x="90" y="70" width="35" height="15" fill="#2c2523" />
-                        <rect x="135" y="70" width="25" height="30" fill="#2c2523" />
-                        <rect x="20" y="95" width="15" height="20" fill="#2c2523" />
-                        <rect x="45" y="95" width="35" height="15" fill="#2c2523" />
-                        <rect x="90" y="95" width="20" height="25" fill="#2c2523" />
-                        <rect x="70" y="125" width="20" height="35" fill="#2c2523" />
-                        <rect x="100" y="135" width="30" height="25" fill="#8b0000" />
-                        <rect x="140" y="125" width="20" height="35" fill="#2c2523" />
-                      </svg>
-                    </div>
-                    <p className="qr-instruction">Scan with GPay, PhonePe, Paytm or any UPI App to Pay <strong>₹{cartTotal}</strong></p>
-                    <span className="upi-id-tag">UPI ID: karpagamtraders@upi</span>
-                  </div>
-
-                  <div className="qr-actions">
-                    <button className="btn-back-form" onClick={() => setQrGenerated(false)}>
-                      <i className="fa-solid fa-arrow-left"></i> Edit Details
-                    </button>
-                    <button className="btn-confirm-payment" onClick={handleCompleteOrder}>
-                      <i className="fa-solid fa-circle-check"></i> Payment Done / Confirm Order
-                    </button>
-                  </div>
+              <form onSubmit={handleSendWhatsAppOrder} className="delivery-form-grid">
+                <div className="form-group-full">
+                  <label>Full Name *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="e.g. Full Name" 
+                    value={payName}
+                    onChange={(e) => setPayName(e.target.value)}
+                  />
                 </div>
-              )}
+
+                <div className="form-group-half">
+                  <label>Email Address</label>
+                  <input 
+                    type="email" 
+                    placeholder="customer@gmail.com" 
+                    value={payEmail}
+                    onChange={(e) => setPayEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group-half">
+                  <label>Mobile Number *</label>
+                  <input 
+                    type="tel" 
+                    required 
+                    pattern="[0-9]{10}"
+                    placeholder="10-digit mobile number" 
+                    value={payMobile}
+                    onChange={(e) => setPayMobile(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group-full">
+                  <label>Delivery Address *</label>
+                  <textarea 
+                    required 
+                    rows="3" 
+                    placeholder="Full delivery address with pincode..."
+                    value={payAddress}
+                    onChange={(e) => setPayAddress(e.target.value)}
+                  ></textarea>
+                </div>
+
+                <div className="order-summary-box" style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'space-between', background: '#fdf5e6', padding: '14px 18px', borderRadius: '12px', fontSize: '1rem', border: '1px solid #fde68a' }}>
+                  <span>Items Total ({cart.length}):</span>
+                  <strong style={{ fontSize: '1.2rem', color: 'var(--primary)' }}>₹{cartTotal}</strong>
+                </div>
+
+                <button type="submit" className="btn-send-whatsapp" style={{
+                  gridColumn: 'span 2',
+                  background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '30px',
+                  padding: '16px 24px',
+                  fontSize: '1.1rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  boxShadow: '0 6px 20px rgba(37, 211, 102, 0.4)',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <i className="fa-brands fa-whatsapp" style={{ fontSize: '1.5rem' }}></i> Send Order via WhatsApp (₹{cartTotal})
+                </button>
+              </form>
             </div>
           </div>
         </div>

@@ -12,11 +12,9 @@ import Dashboard from './pages/Dashboard';
 function App() {
   const [preloaderActive, setPreloaderActive] = useState(true);
   const [user, setUser] = useState(null);
-  const isSigningUpRef = React.useRef(false);
 
   // Modals state
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authTab, setAuthTab] = useState('login'); // 'login' or 'signup'
   const [monthlyModalOpen, setMonthlyModalOpen] = useState(false);
   const [monthlyPreview, setMonthlyPreview] = useState('cover'); // 'cover' or 'sheet'
   const [dailyModalOpen, setDailyModalOpen] = useState(false);
@@ -42,7 +40,7 @@ function App() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // Default Products List (8 Daily, 8 Monthly, 8 Specialty)
+  // Default Products List (Total 24 Products: 8 Daily, 8 Monthly, 8 Specialty)
   const defaultProductsList = [
     // Daily Products (8)
     { id: 1, name: "Daily Calendar 1", price: 299, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Standard daily tear-off sheet calendar with auspicious Nalla Neram." },
@@ -64,7 +62,7 @@ function App() {
     { id: 15, name: "Monthly Calendar 7", price: 349, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact 6-sheet monthly wall hanging calendar." },
     { id: 16, name: "Monthly Calendar 8", price: 529, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Traditional Tamil Panchangam monthly wall calendar." },
 
-    // Specialty / Desk (8)
+    // Cake & Specialty Products (8)
     { id: 17, name: "Cake & Bakery Calendar 1", price: 650, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Specialty desk calendar designed for bakeries & cake shops." },
     { id: 18, name: "Cake & Bakery Calendar 2", price: 750, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Triangular executive desk stand calendar with glossy varnish." },
     { id: 19, name: "Specialty Calendar 3", price: 899, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Bespoke leatherette frame desk calendar with planner diary." },
@@ -79,25 +77,62 @@ function App() {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  // Product actions for Admin & Customer
-  const handleAddProduct = (newProd) => {
+  // Product actions synced with Firebase Firestore
+  const handleAddProduct = async (newProd) => {
     setProducts(prev => [newProd, ...prev]);
+    if (db) {
+      try {
+        await db.collection("products").doc(String(newProd.id)).set(newProd);
+        await addAuditLog(user?.email || 'admin', `Added product ${newProd.name}`);
+      } catch (err) {
+        console.warn("Firestore product add warning:", err);
+      }
+    }
   };
 
-  const handleDeleteProduct = (id) => {
+  const handleDeleteProduct = async (id) => {
     setProducts(prev => prev.filter(p => p.id !== id));
+    if (db) {
+      try {
+        await db.collection("products").doc(String(id)).delete();
+        await addAuditLog(user?.email || 'admin', `Deleted product ID ${id}`);
+      } catch (err) {
+        console.warn("Firestore product delete warning:", err);
+      }
+    }
   };
 
-  const handleUpdateProductPrice = (id, newPrice) => {
+  const handleUpdateProductPrice = async (id, newPrice) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, price: newPrice } : p));
+    if (db) {
+      try {
+        await db.collection("products").doc(String(id)).update({ price: newPrice });
+      } catch (err) {
+        console.warn("Firestore product price update warning:", err);
+      }
+    }
   };
 
-  const handleUpdateProductName = (id, newName) => {
+  const handleUpdateProductName = async (id, newName) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, name: newName } : p));
+    if (db) {
+      try {
+        await db.collection("products").doc(String(id)).update({ name: newName });
+      } catch (err) {
+        console.warn("Firestore product name update warning:", err);
+      }
+    }
   };
 
-  const handleUpdateProductImage = (id, newImage) => {
+  const handleUpdateProductImage = async (id, newImage) => {
     setProducts(prev => prev.map(p => p.id === id ? { ...p, image: newImage } : p));
+    if (db) {
+      try {
+        await db.collection("products").doc(String(id)).update({ image: newImage });
+      } catch (err) {
+        console.warn("Firestore product image update warning:", err);
+      }
+    }
   };
 
   const handleAddToCart = (item) => {
@@ -116,13 +151,12 @@ function App() {
   useEffect(() => {
     if (location.pathname === '/admin') {
       if (user) {
-        if (user.email !== 'admin023@gmail.com' && user.email !== 'admin002@gmail.com' && user.role !== 'admin') {
-          showAlert('Restricted Access: Administrator login required.', 'warning');
+        if (user.email?.toLowerCase() !== 'mohantn617@gmail.com' && user.role !== 'admin') {
+          showAlert('Restricted Access: Only mohantn617@gmail.com can access the Administrator Dashboard.', 'warning');
           navigate('/');
         }
       } else {
         setAuthModalOpen(true);
-        setAuthTab('login');
       }
     }
   }, [location.pathname, user, navigate]);
@@ -139,19 +173,7 @@ function App() {
     if (location.pathname === '/admin') {
       navigate('/');
     }
-    setLoginEmail('');
-    setLoginPassword('');
-    setSignupName('');
-    setSignupEmail('');
-    setSignupPassword('');
   };
-
-  // Auth Inputs
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [signupName, setSignupName] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
 
   // Custom Toast Alerts State
   const [toast, setToast] = useState(null);
@@ -191,26 +213,74 @@ function App() {
   // Seeding and preloader fade out
   useEffect(() => {
     const runStartup = async () => {
-      // 1. Database Seeder
+      // Clear all browser local storage cache on startup
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.clear();
+        }
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.clear();
+        }
+      } catch (e) {
+        console.warn("Local storage clear notice:", e.message);
+      }
+
+      // 1. Database Seeder & Firestore Data Sync
       if (db && auth) {
         try {
-          const seedDocRef = db.collection("settings").doc("seeded");
-          const seedSnap = await seedDocRef.get();
+          // A. Seed & Load Products Collection
+          const prodSnap = await db.collection("products").get();
+          if (prodSnap.empty) {
+            console.log("React: Seeding all 24 products to Firebase Firestore...");
+            for (const p of defaultProductsList) {
+              await db.collection("products").doc(String(p.id)).set(p);
+            }
+          } else {
+            const firestoreProds = [];
+            prodSnap.forEach(doc => {
+              firestoreProds.push(doc.data());
+            });
+            if (firestoreProds.length > 0) {
+              setProducts(firestoreProds);
+            }
+          }
 
-          if (!seedSnap.exists) {
-            console.log("React: Database seeding starting...");
+          // B. Seed Customer Inquiries Collection if empty
+          try {
+            const inqSnap = await db.collection("customer_inquiries").get();
+            if (inqSnap.empty) {
+              console.log("React: Seeding customer inquiries to Firebase Firestore...");
+              await db.collection("customer_inquiries").add({ name: "Siva Kumar", phone: "+91 9443210987", service: "Calendar Printing", message: "Inquire quote for 500 copies of 2027 Monthly Tamil Calendar sheets.", timestamp: "2026-07-08 10:20:00", date: "2026-07-08 10:20:00", status: "Pending" });
+              await db.collection("customer_inquiries").add({ name: "Ramesh K", phone: "+91 9876543210", service: "Business Cards", message: "Need urgent delivery of premium business cards with gold foil borders.", timestamp: "2026-07-09 11:32:00", date: "2026-07-09 11:32:00", status: "Replied" });
+            }
+          } catch (eInq) {
+            console.warn("Inquiries check warning:", eInq.message);
+          }
 
-            // Seed defaults
-            await db.collection("history").add({ email: "admin023@gmail.com", event: "Sign Up", timestamp: "2026-07-01 09:00:23" });
-            await db.collection("history").add({ email: "customer@example.com", event: "Sign Up", timestamp: "2026-07-05 14:12:05" });
-            await db.collection("history").add({ email: "customer@example.com", event: "Sign In", timestamp: "2026-07-05 14:13:55" });
-            await db.collection("history").add({ email: "siva@example.com", event: "Sign Up", timestamp: "2026-07-08 10:15:30" });
+          // C. Seed History Collection if empty
+          try {
+            const histSnap = await db.collection("history").get();
+            if (histSnap.empty) {
+              console.log("React: Seeding system history to Firebase Firestore...");
+              await db.collection("history").add({ email: "mohantn617@gmail.com", event: "Sign Up", timestamp: "2026-07-01 09:00:23" });
+              await db.collection("history").add({ email: "customer@example.com", event: "Sign Up", timestamp: "2026-07-05 14:12:05" });
+              await db.collection("history").add({ email: "customer@example.com", event: "Sign In", timestamp: "2026-07-05 14:13:55" });
+              await db.collection("history").add({ email: "siva@example.com", event: "Sign Up", timestamp: "2026-07-08 10:15:30" });
+            }
+          } catch (eHist) {
+            console.warn("History check warning:", eHist.message);
+          }
 
-            await db.collection("customer_inquiries").add({ name: "Siva Kumar", phone: "+91 9443210987", service: "Calendar Printing", message: "Inquire quote for 500 copies of 2027 Monthly Tamil Calendar sheets.", timestamp: "2026-07-08 10:20:00", status: "Pending" });
-            await db.collection("customer_inquiries").add({ name: "Ramesh K", phone: "+91 9876543210", service: "Business Cards", message: "Need urgent delivery of premium business cards with gold foil borders.", timestamp: "2026-07-09 11:32:00", status: "Replied" });
-
-            await seedDocRef.set({ seeded: true });
-            console.log("React: Seeding complete!");
+          // D. Seed Admin User Doc
+          try {
+            await db.collection("users").doc("admin_mohantn617").set({
+              name: "Mohan K",
+              email: "mohantn617@gmail.com",
+              role: "admin",
+              joinedDate: "2026-08-07"
+            }, { merge: true });
+          } catch (eUser) {
+            console.warn("Admin user seed warning:", eUser.message);
           }
         } catch (e) {
           console.warn("Seeding failed or skipped: ", e.message);
@@ -232,16 +302,15 @@ function App() {
 
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        if (isSigningUpRef.current) return;
         try {
           const userDocRef = db.collection("users").doc(firebaseUser.uid);
           const userSnap = await userDocRef.get();
 
-          let role = "customer";
+          let role = (firebaseUser.email && firebaseUser.email.toLowerCase() === 'mohantn617@gmail.com') ? 'admin' : 'customer';
           let name = firebaseUser.displayName || firebaseUser.email.split('@')[0];
 
           if (userSnap.exists) {
-            role = userSnap.data().role || "customer";
+            role = userSnap.data().role || role;
             name = userSnap.data().name || name;
           } else {
             // Self healing register user profile record
@@ -257,6 +326,7 @@ function App() {
             id: firebaseUser.uid,
             name,
             email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8b0000&color=ffffff`,
             role
           };
           setUser(loggedInUser);
@@ -380,88 +450,6 @@ function App() {
   };
 
   // Auth Operations
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    if (!auth || !db) return;
-    try {
-      const cred = await auth.signInWithEmailAndPassword(loginEmail.trim(), loginPassword);
-      const userObj = cred.user;
-      await addAuditLog(userObj.email, 'Sign In');
-      
-      const userDoc = await db.collection("users").doc(userObj.uid).get();
-      let role = "customer";
-      let name = userObj.displayName || userObj.email.split('@')[0];
-      if (userDoc.exists) {
-        role = userDoc.data().role || "customer";
-        name = userDoc.data().name || name;
-      }
-
-      const loggedInUser = {
-        id: userObj.uid,
-        name,
-        email: userObj.email,
-        role
-      };
-      
-      setUser(loggedInUser);
-      setAuthModalOpen(false);
-      showAlert(`Welcome back, ${name}!`, 'success');
-
-      // Clear inputs
-      setLoginEmail('');
-      setLoginPassword('');
-
-      // Auto open dashboard if admin
-      if (userObj.email === 'admin023@gmail.com') {
-        navigate('/admin');
-      }
-    } catch (err) {
-      showAlert("Login Failed: " + err.message, 'error');
-    }
-  };
-
-  const handleSignupSubmit = async (e) => {
-    e.preventDefault();
-    if (!auth || !db) return;
-    isSigningUpRef.current = true;
-    try {
-      const cred = await auth.createUserWithEmailAndPassword(signupEmail.trim(), signupPassword);
-      await cred.user.updateProfile({ displayName: signupName.trim() });
-
-      const newUserData = {
-        name: signupName.trim(),
-        email: signupEmail.trim(),
-        role: 'customer',
-        joinedDate: getCurrentDate()
-      };
-
-      await db.collection("users").doc(cred.user.uid).set(newUserData);
-
-      await addAuditLog(signupEmail.trim(), 'Sign Up');
-      await addAuditLog(signupEmail.trim(), 'Sign In');
-
-      const loggedInUser = {
-        id: cred.user.uid,
-        name: signupName.trim(),
-        email: signupEmail.trim(),
-        role: 'customer'
-      };
-
-      setUser(loggedInUser);
-      setAuthModalOpen(false);
-      showAlert(`Registration Successful! Welcome, ${signupName}.`, 'success');
-
-      // Clear inputs
-      setSignupName('');
-      setSignupEmail('');
-      setSignupPassword('');
-    } catch (err) {
-      showAlert("Registration Failed: " + err.message, 'error');
-    } finally {
-      isSigningUpRef.current = false;
-    }
-  };
-
   const handleGoogleSignIn = async () => {
     if (!auth || !db || !googleProvider) return;
     try {
@@ -471,11 +459,11 @@ function App() {
       const userDocRef = db.collection("users").doc(u.uid);
       const userSnap = await userDocRef.get();
       
-      let role = "customer";
+      let role = (u.email && u.email.toLowerCase() === 'mohantn617@gmail.com') ? 'admin' : 'customer';
       let name = u.displayName || u.email.split('@')[0];
       
       if (userSnap.exists) {
-        role = userSnap.data().role || "customer";
+        role = userSnap.data().role || role;
         name = userSnap.data().name || name;
       } else {
         await userDocRef.set({
@@ -490,6 +478,7 @@ function App() {
         id: u.uid,
         name,
         email: u.email,
+        photoURL: u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8b0000&color=ffffff`,
         role
       };
 
@@ -510,6 +499,10 @@ function App() {
         await addAuditLog(user.email, 'Sign Out');
       }
       await auth.signOut();
+      if (typeof window !== 'undefined') {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+      }
       showAlert("Successfully logged out.", 'info');
       setDashboardOpen(false);
     } catch (err) {
@@ -519,7 +512,7 @@ function App() {
 
   // Admin Dashboard Actions
   const handleDeleteUser = async (uid, email) => {
-    if (email === 'admin023@gmail.com') return;
+    if (email?.toLowerCase() === 'mohantn617@gmail.com') return;
     if (!window.confirm("Are you sure you want to delete this user profile document? This cannot be undone.")) return;
 
     try {
@@ -623,7 +616,7 @@ function App() {
             <ul className="footer-links">
               <li><button onClick={() => navigate('/shop')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> Daily & Monthly Shop</button></li>
               <li><button onClick={() => navigate('/showcase')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> Calendar Showcase</button></li>
-              <li><button onClick={() => navigate('/about')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> About Company</button></li>
+              <li><button onClick={() => navigate('/contact')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> About Company</button></li>
               <li><button onClick={() => navigate('/contact')} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}><i className="fa-solid fa-chevron-right"></i> Contact Support</button></li>
             </ul>
           </div>
@@ -692,7 +685,6 @@ function App() {
           onLogout={handleLogout}
           onOpenAuth={() => {
             setAuthModalOpen(true);
-            setAuthTab('login');
           }}
           onOpenDashboard={() => {
             navigate('/admin');
@@ -725,7 +717,7 @@ function App() {
                     <i className="fa-solid fa-store" style={{ marginRight: '8px' }}></i> Browse Shop & Products
                   </button>
                   <button 
-                    onClick={() => navigate('/about')} 
+                    onClick={() => navigate('/contact')} 
                     style={{ background: 'white', color: 'var(--primary)', border: '1.5px solid var(--primary)', padding: '12px 24px', borderRadius: '30px', fontWeight: 700, cursor: 'pointer' }}
                   >
                     Learn About Us
@@ -742,62 +734,11 @@ function App() {
         {/* ABOUT PAGE VIEW ONLY */}
         <Route path="/about" element={
           <>
-            <section id="about" style={{ padding: '80px 5%', minHeight: '75vh' }}>
-              <div className="section-title scroll-reveal-fade revealed">
-                <h2>About Karpagam Traders</h2>
-                <p>Your trusted partner for all printing needs in Sivakasi</p>
-              </div>
-
-              <div className="about-grid">
-                <div className="card scroll-reveal-fade revealed">
-                  <h3>Excellence in Every Print</h3>
-                  <p>
-                    Located in the heart of Sivakasi, Karpagam Traders has been serving customers with state-of-the-art premium
-                    printing services. We specialize in producing beautiful religious & modern calendars, business materials,
-                    diaries, boxes, and bespoke custom prints that represent your brand with prestige.
-                  </p>
-
-                  <div className="stats">
-                    <div className="stat-card">
-                      <div className="stat-number">500+</div>
-                      <div className="stat-label">Happy Customers</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-number">10+</div>
-                      <div className="stat-label">Years Experience</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="card info-card scroll-reveal-fade revealed">
-                  <h3>Contact Information</h3>
-                  <ul className="info-list">
-                    <li>
-                      <i className="fa-solid fa-location-dot"></i>
-                      <div>
-                        <strong>Factory & Office</strong>
-                        <span>261/12a Muniyasamy Nagar, Sn Puram Road, Thiruthangal, Sivakasi, TN, 626130</span>
-                      </div>
-                    </li>
-                    <li>
-                      <i className="fa-solid fa-phone"></i>
-                      <div>
-                        <strong>Phone Lines</strong>
-                        <span>+91 9566801402<br />+91 9489691402</span>
-                      </div>
-                    </li>
-                    <li>
-                      <i className="fa-solid fa-envelope"></i>
-                      <div>
-                        <strong>Email Address</strong>
-                        <span>Karpagamtraderssivakasi@gmail.com</span>
-                      </div>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </section>
-
+            <ContactForm
+              selectedService={selectedService}
+              onClearService={() => setSelectedService('')}
+              showAlert={showAlert}
+            />
             <Footer />
           </>
         } />
@@ -853,7 +794,7 @@ function App() {
 
         {/* Dedicated Admin Dashboard Route */}
         <Route path="/admin" element={
-          user && (user.email === 'admin023@gmail.com' || user.email === 'admin002@gmail.com' || user.role === 'admin') ? (
+          user && (user.email?.toLowerCase() === 'mohantn617@gmail.com' || user.role === 'admin') ? (
             <Dashboard 
               products={products}
               onAddProduct={handleAddProduct}
@@ -868,7 +809,7 @@ function App() {
               <i className="fa-solid fa-lock" style={{ fontSize: '3.5rem', color: 'var(--primary)', marginBottom: '20px' }}></i>
               <h2 style={{ fontFamily: 'var(--font-heading)', color: 'var(--primary)', marginBottom: '10px', fontSize: '2rem', fontWeight: 800 }}>Restricted Access</h2>
               <p style={{ color: 'var(--text-muted)', maxWidth: '450px', margin: '0 auto 20px', fontSize: '1rem', lineHeight: 1.5 }}>Administrator credentials required to access this dashboard.</p>
-              <button className="auth-btn" onClick={() => { setAuthTab('login'); setAuthModalOpen(true); }} style={{ marginTop: '20px', borderRadius: '30px', padding: '12px 30px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 0, 0, 0.15)' }}>Log In as Admin</button>
+              <button className="auth-btn" onClick={() => setAuthModalOpen(true)} style={{ marginTop: '20px', borderRadius: '30px', padding: '12px 30px', background: 'var(--primary)', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 0, 0, 0.15)' }}>Log In as Admin</button>
             </div>
           )
         } />
@@ -907,64 +848,71 @@ function App() {
         </div>
       )}
 
-      {/* 6. Auth Modal Overlay */}
+      {/* 6. Animated Premium Auth Modal Overlay */}
       {authModalOpen && (
-        <div className="auth-overlay open" onClick={(e) => e.target.classList.contains('auth-overlay') && handleCloseAuth()}>
-          <div className="auth-modal">
-            <div className="auth-modal-header">
-              <div className="auth-title" id="auth-modal-title">Access Panel</div>
-              <button className="close-auth-btn" onClick={handleCloseAuth}><i className="fa-solid fa-xmark"></i></button>
+        <div className="auth-overlay open animated-backdrop" onClick={(e) => e.target.classList.contains('auth-overlay') && handleCloseAuth()}>
+          <div className="auth-modal luxury-modal-card" style={{ maxWidth: '440px', padding: '0', borderRadius: '28px', overflow: 'hidden' }}>
+            {/* Modal Header */}
+            <div className="auth-modal-header" style={{
+              background: 'linear-gradient(135deg, #8b0000 0%, #dc2626 100%)',
+              color: 'white',
+              padding: '24px 28px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              position: 'relative'
+            }}>
+              <div>
+                <span style={{ background: 'rgba(255,255,255,0.2)', color: '#ffd700', fontSize: '0.72rem', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <i className="fa-solid fa-bolt" style={{ marginRight: '4px' }}></i> Fast Access
+                </span>
+                <h3 className="auth-title" id="auth-modal-title" style={{ fontSize: '1.45rem', fontWeight: 800, color: 'white', marginTop: '6px', margin: 0 }}>
+                  Welcome to Karpagam Traders
+                </h3>
+              </div>
+              <button className="close-auth-btn" onClick={handleCloseAuth} style={{ color: 'white', opacity: 0.85, background: 'rgba(255,255,255,0.15)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
             </div>
-            <div className="auth-tabs">
-              <div className={`auth-tab ${authTab === 'login' ? 'active' : ''}`} onClick={() => setAuthTab('login')}>Log In</div>
-              <div className={`auth-tab ${authTab === 'signup' ? 'active' : ''}`} onClick={() => setAuthTab('signup')}>Sign Up</div>
-            </div>
 
-            <div className="auth-forms-container">
-              {/* Login Form */}
-              <form className={`auth-form ${authTab === 'login' ? 'active' : ''}`} onSubmit={handleLoginSubmit}>
-                <div className="input-wrapper">
-                  <input type="email" required placeholder=" " value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
-                  <label>Email Address</label>
-                  <i className="fa-solid fa-envelope input-icon"></i>
-                </div>
-                <div className="input-wrapper">
-                  <input type="password" required placeholder=" " value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
-                  <label>Password</label>
-                  <i className="fa-solid fa-lock input-icon"></i>
-                </div>
-                <button type="submit" className="auth-btn">Log In <i className="fa-solid fa-right-to-bracket"></i></button>
-              </form>
+            {/* Modal Body Content */}
+            <div className="auth-forms-container" style={{ textAlign: 'center', padding: '28px 24px 32px', background: '#ffffff' }}>
+              <p style={{ color: '#475569', fontSize: '0.96rem', marginBottom: '22px', lineHeight: 1.6, fontWeight: 500 }}>
+                Sign in with your Google account for 1-click access to calendar pricing, quick checkout, and direct inquiries.
+              </p>
 
-              {/* Signup Form */}
-              <form className={`auth-form ${authTab === 'signup' ? 'active' : ''}`} onSubmit={handleSignupSubmit}>
-                <div className="input-wrapper">
-                  <input type="text" required placeholder=" " value={signupName} onChange={(e) => setSignupName(e.target.value)} />
-                  <label>Full Name</label>
-                  <i className="fa-solid fa-user input-icon"></i>
-                </div>
-                <div className="input-wrapper">
-                  <input type="email" required placeholder=" " value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} />
-                  <label>Email Address</label>
-                  <i className="fa-solid fa-envelope input-icon"></i>
-                </div>
-                <div className="input-wrapper">
-                  <input type="password" required placeholder=" " value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
-                  <label>Password</label>
-                  <i className="fa-solid fa-lock input-icon"></i>
-                </div>
-                <button type="submit" className="auth-btn">Register Account <i className="fa-solid fa-user-plus"></i></button>
-              </form>
+              {/* Feature Highlights Badges */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '26px' }}>
+                <span style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', fontSize: '0.75rem', fontWeight: 700, padding: '6px 12px', borderRadius: '20px' }}>
+                  <i className="fa-solid fa-shield-halved" style={{ color: '#16a34a', marginRight: '5px' }}></i> 100% Secure
+                </span>
+                <span style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', fontSize: '0.75rem', fontWeight: 700, padding: '6px 12px', borderRadius: '20px' }}>
+                  <i className="fa-solid fa-cart-shopping" style={{ color: '#8b0000', marginRight: '5px' }}></i> Saved Cart
+                </span>
+                <span style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', fontSize: '0.75rem', fontWeight: 700, padding: '6px 12px', borderRadius: '20px' }}>
+                  <i className="fa-solid fa-truck-fast" style={{ color: '#2563eb', marginRight: '5px' }}></i> Order Tracking
+                </span>
+              </div>
 
-              <div className="auth-divider">OR</div>
-              <button type="button" className="auth-google-btn" onClick={handleGoogleSignIn}>
-                <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '8px' }}>
+              {/* Enhanced Google Sign-In Action Button */}
+              <button type="button" className="auth-google-btn pulse-google-btn" onClick={handleGoogleSignIn} style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '14px 22px',
+                borderRadius: '50px',
+                border: '2px solid #e2e8f0',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+                background: '#ffffff',
+                cursor: 'pointer',
+                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+              }}>
+                <svg viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '12px' }}>
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
                 </svg>
-                <span>Continue with Google</span>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>Continue with Google</span>
               </button>
             </div>
           </div>
@@ -1274,7 +1222,7 @@ function App() {
                               <td><span className={`badge ${item.role}`}>{item.role}</span></td>
                               <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{item.joinedDate || '2026-07-01'}</td>
                               <td>
-                                <button className="action-btn-danger" onClick={() => handleDeleteUser(item.id, item.email)} disabled={item.email === 'admin023@gmail.com'} style={{ opacity: item.email === 'admin023@gmail.com' ? 0.5 : 1, cursor: item.email === 'admin023@gmail.com' ? 'not-allowed' : 'pointer' }}><i className="fa-solid fa-trash-can"></i> Delete</button>
+                                <button className="action-btn-danger" onClick={() => handleDeleteUser(item.id, item.email)} disabled={item.email?.toLowerCase() === 'mohantn617@gmail.com'} style={{ opacity: item.email?.toLowerCase() === 'mohantn617@gmail.com' ? 0.5 : 1, cursor: item.email?.toLowerCase() === 'mohantn617@gmail.com' ? 'not-allowed' : 'pointer' }}><i className="fa-solid fa-trash-can"></i> Delete</button>
                               </td>
                             </tr>
                           ))}

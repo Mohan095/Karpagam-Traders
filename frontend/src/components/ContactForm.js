@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import apiService from '../api';
 
 function ContactForm({ selectedService, onClearService, showAlert }) {
   const [formData, setFormData] = useState({
@@ -52,35 +54,155 @@ function ContactForm({ selectedService, onClearService, showAlert }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      // Sending data to Python Backend
-      const response = await fetch('http://127.0.0.1:8000/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData) // உங்க ஃபார்ம் டேட்டா
-      });
 
-      if (response.ok) {
-        // உங்களுடைய அழகான Success Toast-ஐ இங்கே கொடுக்கவும்
-        showAlert('✅ Message Sent to Python Successfully!', 'success'); 
-        setFormData({ name: '', phone: '', email: '', service: 'Daily Calendar', message: '' });
-        if (onClearService) onClearService();
-      } else {
-        // உங்களுடைய Error Toast-ஐ இங்கே கொடுக்கவும்
-        showAlert('❌ Failed to send message.', 'error'); 
+    let pythonSuccess = false;
+    let firebaseSuccess = false;
+    let errorDetail = '';
+
+    const payload = {
+      name: formData.name || 'Anonymous Customer',
+      phone: formData.phone || '',
+      email: formData.email || '',
+      service: formData.service || 'Daily Calendar',
+      message: formData.message || 'General Inquiry'
+    };
+
+    // 1. Send data to Python FastAPI Backend
+    try {
+      await apiService.submitContactForm(payload);
+      pythonSuccess = true;
+    } catch (pyErr) {
+      console.warn("Python API submit failed, trying local direct fetch:", pyErr);
+      try {
+        const response = await fetch('http://127.0.0.1:8000/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (response.ok) pythonSuccess = true;
+      } catch (directErr) {
+        console.warn("Direct Python backend fetch error:", directErr);
+        errorDetail = directErr.message;
       }
-    } catch (error) {
-      showAlert('Error: Check if Python server is running.', 'error');
-    } finally {
-      setLoading(false);
     }
+
+    // 2. Save inquiry to Firebase Firestore if initialized
+    if (db) {
+      try {
+        const now = new Date();
+        const timestampStr = now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0') + ' ' +
+          String(now.getHours()).padStart(2, '0') + ':' +
+          String(now.getMinutes()).padStart(2, '0') + ':' +
+          String(now.getSeconds()).padStart(2, '0');
+
+        await db.collection("customer_inquiries").add({
+          name: payload.name,
+          phone: payload.phone,
+          email: payload.email,
+          service: payload.service,
+          message: payload.message,
+          timestamp: timestampStr,
+          status: "Pending"
+        });
+        firebaseSuccess = true;
+      } catch (fbErr) {
+        console.warn("Firebase collection write warning:", fbErr);
+      }
+    }
+
+    // Determine Toast Alert Outcome
+    if (pythonSuccess || firebaseSuccess) {
+      if (showAlert) {
+        showAlert('✅ Message Sent Successfully! Our team will contact you shortly.', 'success');
+      }
+      setFormData({ name: '', phone: '', email: '', service: 'Daily Calendar', message: '' });
+      if (onClearService) onClearService();
+    } else {
+      if (showAlert) {
+        showAlert(`❌ Failed to send message. ${errorDetail ? '(' + errorDetail + ')' : 'Please check your connection.'}`, 'error');
+      }
+    }
+
+    setLoading(false);
   };
 
   return (
-    <section className="contact-section" id="contact">
+    <section className="contact-section" id="contact" style={{ paddingTop: '50px' }}>
+      {/* Integrated About Us Company Banner */}
+      <div className="about-company-banner scroll-reveal-fade revealed" style={{
+        background: 'linear-gradient(135deg, rgba(139,0,0,0.05) 0%, rgba(220,38,38,0.08) 100%)',
+        borderRadius: '24px',
+        padding: '36px 30px',
+        marginBottom: '50px',
+        border: '1px solid rgba(139,0,0,0.12)',
+        boxShadow: '0 10px 30px rgba(139,0,0,0.05)'
+      }}>
+        <div style={{ textAlign: 'center', maxWidth: '850px', margin: '0 auto' }}>
+          <span style={{ 
+            background: 'var(--primary)', 
+            color: 'white', 
+            padding: '6px 16px', 
+            borderRadius: '20px', 
+            fontSize: '0.8rem', 
+            fontWeight: 800, 
+            letterSpacing: '1px', 
+            textTransform: 'uppercase',
+            display: 'inline-block',
+            marginBottom: '14px'
+          }}>
+            <i className="fa-solid fa-award" style={{ marginRight: '6px' }}></i> About Karpagam Traders
+          </span>
+          <h2 style={{ 
+            fontFamily: 'var(--font-heading)', 
+            color: 'var(--primary)', 
+            fontSize: '2.2rem', 
+            fontWeight: 800, 
+            marginBottom: '14px',
+            lineHeight: 1.25
+          }}>
+            Sivakasi's Premier Calendar & Offset Printing Hub
+          </h2>
+          <p style={{ 
+            color: 'var(--text-muted)', 
+            fontSize: '1.05rem', 
+            lineHeight: 1.7, 
+            marginBottom: '28px' 
+          }}>
+            Located in the printing capital of India—Sivakasi—Karpagam Traders has been delivering top-tier offset printing services for over 10 years. We specialize in Tamil Daily Tear-Off Calendars, 12-Sheet Monthly Wall Calendars, customized business diaries, and corporate stationery.
+          </p>
+
+          {/* Quick About Stats Grid */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+            gap: '16px',
+            marginTop: '20px'
+          }}>
+            <div style={{ background: 'white', padding: '16px 20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}>10+ Years</div>
+              <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Printing Excellence</div>
+            </div>
+            <div style={{ background: 'white', padding: '16px 20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}>500+</div>
+              <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Corporate Clients</div>
+            </div>
+            <div style={{ background: 'white', padding: '16px 20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}>100%</div>
+              <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>High-GSM Quality</div>
+            </div>
+            <div style={{ background: 'white', padding: '16px 20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}>Pan-India</div>
+              <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Fast Shipping</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="section-title scroll-reveal-fade revealed">
-        <h2>Get In Touch</h2>
-        <p>Ready to bring your printing ideas to life? Contact us today!</p>
+        <h2>Get In Touch & Send Inquiry</h2>
+        <p>Have questions about bulk calendar orders or custom printing? Contact us today!</p>
       </div>
 
       <div className="contact-grid">
@@ -170,11 +292,11 @@ function ContactForm({ selectedService, onClearService, showAlert }) {
             <button type="submit" className="whatsapp-btn" style={{ pointerEvents: loading ? 'none' : 'auto' }}>
               {loading ? (
                 <>
-                  <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Sending securely to Python Backend...
+                  <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Sending Message...
                 </>
               ) : (
                 <>
-                  <i className="fa-solid fa-paper-plane" style={{ marginRight: '8px' }}></i> Send Message to Python Backend
+                  <i className="fa-solid fa-paper-plane" style={{ marginRight: '8px' }}></i> Send Message
                 </>
               )}
             </button>

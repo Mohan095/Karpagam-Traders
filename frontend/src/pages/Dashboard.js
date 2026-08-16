@@ -44,31 +44,54 @@ function Dashboard({
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Load Firestore / API data if available
       if (db) {
         // Users
-        const usersSnap = await db.collection("users").get();
-        const uList = [];
-        usersSnap.forEach(docSnap => {
-          uList.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        setRegisteredUsers(uList);
+        try {
+          const usersSnap = await db.collection("users").get();
+          const uList = [];
+          usersSnap.forEach(docSnap => {
+            uList.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          setRegisteredUsers(uList);
+        } catch (uErr) {
+          console.warn("Users fetch warning:", uErr);
+        }
 
         // Messages
-        const msgSnap = await db.collection("customer_inquiries").orderBy("timestamp", "desc").get();
-        const mList = [];
-        msgSnap.forEach(docSnap => {
-          mList.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        setMessages(mList);
+        try {
+          let msgSnap;
+          try {
+            msgSnap = await db.collection("customer_inquiries").orderBy("timestamp", "desc").get();
+          } catch (mSortErr) {
+            msgSnap = await db.collection("customer_inquiries").get();
+          }
+          const mList = [];
+          msgSnap.forEach(docSnap => {
+            mList.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          mList.sort((a, b) => (b.timestamp || b.date || '').localeCompare(a.timestamp || a.date || ''));
+          setMessages(mList);
+        } catch (mErr) {
+          console.warn("Messages fetch warning:", mErr);
+        }
 
-        // Logs
-        const logsSnap = await db.collection("history").orderBy("timestamp", "desc").get();
-        const lList = [];
-        logsSnap.forEach(docSnap => {
-          lList.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        setSystemLogs(lList);
+        // System Activity Logs
+        try {
+          let logsSnap;
+          try {
+            logsSnap = await db.collection("history").orderBy("timestamp", "desc").get();
+          } catch (lSortErr) {
+            logsSnap = await db.collection("history").get();
+          }
+          const lList = [];
+          logsSnap.forEach(docSnap => {
+            lList.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          lList.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+          setSystemLogs(lList);
+        } catch (lErr) {
+          console.warn("Logs fetch warning:", lErr);
+        }
       }
     } catch (err) {
       console.warn("Firestore fetch error, falling back to local records:", err.message);
@@ -117,7 +140,7 @@ function Dashboard({
   };
 
   const handleDeleteUserRecord = async (uid, email) => {
-    if (email === 'admin023@gmail.com' || email === 'admin002@gmail.com') {
+    if (email?.toLowerCase() === 'mohantn617@gmail.com') {
       alert("System Administrator account cannot be deleted.");
       return;
     }
@@ -485,7 +508,7 @@ function Dashboard({
                     </thead>
                     <tbody>
                       {(registeredUsers.length > 0 ? registeredUsers : [
-                        { id: 'u1', name: 'Administrator', email: 'admin023@gmail.com', role: 'admin', joinedDate: '2026-07-01' }
+                        { id: 'u1', name: 'Administrator', email: 'mohantn617@gmail.com', role: 'admin', joinedDate: '2026-07-01' }
                       ]).map((u) => (
                         <tr key={u.id}>
                           <td><strong>{u.name}</strong></td>
@@ -613,7 +636,7 @@ function Dashboard({
                       </div>
                       <div className="timeline-content-box">
                         <div className="timeline-meta">
-                          <span className="user">{l.email || l.user || 'admin023@gmail.com'}</span>
+                          <span className="user">{l.email || l.user || 'mohantn617@gmail.com'}</span>
                           <span className="time">{l.timestamp}</span>
                         </div>
                         <div className="timeline-text">{l.event || l.activity || 'System operation executed.'}</div>

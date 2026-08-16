@@ -1,6 +1,14 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://karpagam-trader-s.onrender.com/api';
+const isLocalhost = Boolean(
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '[::1]' ||
+  window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+);
+
+const API_BASE_URL = isLocalhost 
+  ? 'http://127.0.0.1:8000/api'
+  : 'https://karpagam-trader-s.onrender.com/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

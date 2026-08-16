@@ -358,10 +358,74 @@ header.navbar-header.scrolled {
   cursor: pointer;
 }
 
-.nav-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  filter: brightness(1.1);
+.animated-signin-btn {
+  background: linear-gradient(135deg, #8b0000 0%, #dc2626 50%, #b91c1c 100%) !important;
+  box-shadow: 0 4px 18px rgba(139, 0, 0, 0.35) !important;
+  border: 1.5px solid rgba(255, 215, 0, 0.4) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.animated-signin-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 70%
+  );
+  transform: rotate(30deg);
+  animation: shineGlow 4s infinite ease-in-out;
+}
+
+@keyframes shineGlow {
+  0% { transform: translateX(-100%) rotate(30deg); }
+  20%, 100% { transform: translateX(100%) rotate(30deg); }
+}
+
+.animated-signin-btn:hover {
+  transform: translateY(-3px) scale(1.04) !important;
+  box-shadow: 0 8px 25px rgba(139, 0, 0, 0.45) !important;
+}
+
+/* LUXURY AUTH MODAL ANIMATIONS & STYLES */
+.animated-backdrop {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  animation: fadeInBackdrop 0.35s ease forwards;
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.luxury-modal-card {
+  box-shadow: 0 25px 60px rgba(139, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(139, 0, 0, 0.15) !important;
+  animation: modalPopUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+@keyframes modalPopUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(25px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.pulse-google-btn:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12) !important;
+  border-color: #4285F4 !important;
 }
 
 .mobile-menu-toggle {
@@ -3738,8 +3802,9 @@ body.modal-open {
     justify-content: center;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   }
+}
 
-/* 3-CARD COVERFLOW CAROUSEL (DESKTOP & MOBILE) */
+/* 3-CARD COVERFLOW CAROUSEL & GRID BASE */
 .coverflow-3card-wrapper {
   display: flex;
   align-items: center;
@@ -3788,7 +3853,36 @@ body.modal-open {
   box-shadow: 0 4px 14px rgba(139, 0, 0, 0.3);
 }
 
+/* LAPTOP / DESKTOP SCREEN 4-COLUMN GRID VIEW (4*4 PRODUCT VIEW FOR DAILY, MONTHLY, CAKE) */
+.desktop-4col-grid-view {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  width: 100%;
+  margin-top: 20px;
+  box-sizing: border-box;
+}
+
+.mobile-only-coverflow {
+  display: none !important;
+}
+
+@media (max-width: 1024px) {
+  .desktop-4col-grid-view {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+}
+
 @media (max-width: 768px) {
+  .desktop-4col-grid-view {
+    display: none !important;
+  }
+  .mobile-only-coverflow {
+    display: flex !important;
+  }
+
   .coverflow-3card-wrapper {
     display: flex;
     align-items: center;
@@ -3900,37 +3994,4 @@ body.modal-open {
     background: rgba(0, 0, 0, 0.6) !important;
     color: #ffffff !important;
   }
-}
-
-/* LAPTOP / DESKTOP SCREEN 4-COLUMN GRID VIEW (4*4 PRODUCT VIEW FOR DAILY, MONTHLY, CAKE) */
-.desktop-4col-grid-view {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-  width: 100%;
-  margin-top: 20px;
-  box-sizing: border-box;
-}
-
-.mobile-only-coverflow {
-  display: none !important;
-}
-
-@media (max-width: 1024px) {
-  .desktop-4col-grid-view {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 18px;
-  }
-}
-
-@media (max-width: 768px) {
-  .desktop-4col-grid-view {
-    display: none !important;
-  }
-  .mobile-only-coverflow {
-    display: flex !important;
-  }
-}
-
 }
