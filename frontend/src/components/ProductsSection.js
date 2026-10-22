@@ -75,11 +75,13 @@ function ProductsSection({
       image: selectedProduct.image,
       quality: selectedQuality,
       size: selectedSize,
-      price: finalPrice
+      price: finalPrice,
+      quantity: 1
     };
 
     onAddToCart(cartItem);
     setOptionsModalOpen(false);
+    if (onOpenCart) onOpenCart();
     if (showAlert) showAlert(`${selectedProduct.name} (${selectedQuality}, ${selectedSize}) added to cart!`, 'success');
   };
 
@@ -440,148 +442,6 @@ function ProductsSection({
         </div>
       )}
 
-      {/* 2. SHOPPING CART DRAWER (RIGHT-SIDE 25% WIDTH, 100VH FULL HEIGHT) */}
-      {cartOpen && (
-        <div className="cart-drawer-overlay open" onClick={(e) => e.target.classList.contains('cart-drawer-overlay') && handleCloseCartDrawer()}>
-          <div className="cart-drawer-card right-side-drawer">
-            <div className="cart-drawer-header">
-              <h3><i className="fa-solid fa-cart-shopping"></i> Shopping Cart ({cart.length})</h3>
-              <button className="close-modal-btn" onClick={handleCloseCartDrawer}>
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-
-            <div className="cart-drawer-body">
-              {cart.map((item, idx) => (
-                <div key={item.id || idx} className="cart-item-row">
-                  <img src={item.image} alt={item.name} className="cart-item-img" />
-                  <div className="cart-item-info">
-                    <h4>{item.name}</h4>
-                    <span className="cart-item-specs">{item.quality} • {item.size}</span>
-                    <span className="cart-item-price">₹{item.price}</span>
-                  </div>
-                  <button className="btn-remove-item" onClick={() => onRemoveFromCart(idx)} title="Remove Item">
-                    <i className="fa-solid fa-trash-can"></i>
-                  </button>
-                </div>
-              ))}
-
-              {cart.length === 0 && (
-                <div className="empty-cart-state">
-                  <i className="fa-solid fa-cart-flatbed"></i>
-                  <p>Your shopping cart is empty.</p>
-                  <span>Add items from our Daily, Monthly & Specialty calendars.</span>
-                </div>
-              )}
-            </div>
-
-            {cart.length > 0 && (
-              <div className="cart-drawer-footer">
-                <div className="cart-summary-line">
-                  <span>Total Amount:</span>
-                  <strong>₹{cartTotal}</strong>
-                </div>
-
-                <div className="cart-footer-buttons">
-                  <button className="btn-secondary-cart" onClick={onClearCart}>
-                    <i className="fa-solid fa-broom"></i> Clear
-                  </button>
-                  <button className="btn-primary-checkout" onClick={() => { handleCloseCartDrawer(); setPaymentModalOpen(true); }}>
-                    <i className="fa-solid fa-credit-card"></i> Checkout (₹{cartTotal})
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 3. CHECKOUT & PAYMENT UPI QR MODAL */}
-      {paymentModalOpen && (
-        <div className="product-modal-overlay open" onClick={(e) => e.target.classList.contains('product-modal-overlay') && setPaymentModalOpen(false)}>
-          <div className="payment-modal-card">
-            <div className="payment-modal-header">
-              <h3><i className="fa-solid fa-cash-register"></i> Complete Order & Payment</h3>
-              <button className="close-modal-btn" onClick={() => setPaymentModalOpen(false)}>
-                <i className="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-
-            <div className="payment-modal-body">
-              <form onSubmit={handleSendWhatsAppOrder} className="delivery-form-grid">
-                <div className="form-group-full">
-                  <label>Full Name *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="e.g. Full Name" 
-                    value={payName}
-                    onChange={(e) => setPayName(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group-half">
-                  <label>Email Address</label>
-                  <input 
-                    type="email" 
-                    placeholder="customer@gmail.com" 
-                    value={payEmail}
-                    onChange={(e) => setPayEmail(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group-half">
-                  <label>Mobile Number *</label>
-                  <input 
-                    type="tel" 
-                    required 
-                    pattern="[0-9]{10}"
-                    placeholder="10-digit mobile number" 
-                    value={payMobile}
-                    onChange={(e) => setPayMobile(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group-full">
-                  <label>Delivery Address *</label>
-                  <textarea 
-                    required 
-                    rows="3" 
-                    placeholder="Full delivery address with pincode..."
-                    value={payAddress}
-                    onChange={(e) => setPayAddress(e.target.value)}
-                  ></textarea>
-                </div>
-
-                <div className="order-summary-box" style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'space-between', background: '#fdf5e6', padding: '14px 18px', borderRadius: '12px', fontSize: '1rem', border: '1px solid #fde68a' }}>
-                  <span>Items Total ({cart.length}):</span>
-                  <strong style={{ fontSize: '1.2rem', color: 'var(--primary)' }}>₹{cartTotal}</strong>
-                </div>
-
-                <button type="submit" className="btn-send-whatsapp" style={{
-                  gridColumn: 'span 2',
-                  background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '30px',
-                  padding: '16px 24px',
-                  fontSize: '1.1rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  boxShadow: '0 6px 20px rgba(37, 211, 102, 0.4)',
-                  transition: 'all 0.3s ease'
-                }}>
-                  <i className="fa-brands fa-whatsapp" style={{ fontSize: '1.5rem' }}></i> Send Order via WhatsApp (₹{cartTotal})
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
       )}
     </section>
   );

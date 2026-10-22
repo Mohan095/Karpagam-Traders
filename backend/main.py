@@ -1,12 +1,18 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import datetime
 import json
 import urllib.request
 import urllib.error
 
-app = FastAPI(title="Karpagam Traders - Advanced Corporate Admin API")
+import database
+from models import OrderRequest, ContactFormSubmit, AdminLogin, TokenResponse
+from security import verify_password, create_access_token
+
+app = FastAPI(
+    title="Karpagam Traders - Offline-First Production API",
+    description="Full offline SQLite persistence with asynchronous cloud synchronization."
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,245 +22,301 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Firebase Firestore Configuration
+# Optional Firebase Firestore Configuration for Cloud Sync
 FIREBASE_PROJECT_ID = "user-9bc76"
 FIRESTORE_BASE_URL = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents"
 
-def firestore_doc_to_dict(doc):
-    """Convert Firestore REST document fields to flat dict."""
-    fields = doc.get("fields", {})
-    result = {}
-    for key, val in fields.items():
-        if "stringValue" in val:
-            result[key] = val["stringValue"]
-        elif "integerValue" in val:
-            result[key] = int(val["integerValue"])
-        elif "doubleValue" in val:
-            result[key] = float(val["doubleValue"])
-        elif "booleanValue" in val:
-            result[key] = val["booleanValue"]
-    doc_name = doc.get("name", "")
-    if doc_name:
-        result["id"] = doc_name.split("/")[-1]
-    return result
 
-def push_to_firestore(collection: str, data: dict):
-    """Push a new document to Firebase Firestore collection via REST API."""
-    url = f"{FIRESTORE_BASE_URL}/{collection}"
-    fields = {}
-    for k, v in data.items():
-        if isinstance(v, str):
-            fields[k] = {"stringValue": str(v)}
-        elif isinstance(v, bool):
-            fields[k] = {"booleanValue": v}
-        elif isinstance(v, (int, float)):
-            fields[k] = {"doubleValue": float(v)}
-        elif v is None:
-            fields[k] = {"stringValue": ""}
-
-    payload = json.dumps({"fields": fields}).encode("utf-8")
-    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
+def push_to_firestore_background(collection: str, data: dict):
+    """Attempt background cloud sync without blocking user or failing offline requests."""
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        url = f"{FIRESTORE_BASE_URL}/{collection}"
+        fields = {}
+        for k, v in data.items():
+            if isinstance(v, str):
+                fields[k] = {"stringValue": str(v)}
+            elif isinstance(v, bool):
+                fields[k] = {"booleanValue": v}
+            elif isinstance(v, (int, float)):
+                fields[k] = {"doubleValue": float(v)}
+            elif v is None:
+                fields[k] = {"stringValue": ""}
+
+        payload = json.dumps({"fields": fields}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=1.5) as resp:
             return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        print(f"Firestore push warning for {collection}: {e}")
-        return None
+    except Exception:
+        # Offline or cloud unreachable: safely ignore; data is preserved locally in SQLite
+        pass
 
-def fetch_from_firestore(collection: str):
-    """Fetch documents from Firebase Firestore collection via REST API."""
-    url = f"{FIRESTORE_BASE_URL}/{collection}"
-    req = urllib.request.Request(url, headers={"Content-Type": "application/json"}, method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            docs = data.get("documents", [])
-            return [firestore_doc_to_dict(d) for d in docs]
-    except Exception as e:
-        print(f"Firestore fetch warning for {collection}: {e}")
-        return []
 
 @app.on_event("startup")
-async def seed_firebase_on_startup():
-    print("FastAPI: Verifying and seeding Firebase Firestore collections...")
+def on_startup():
+    print("FastAPI: Initializing local SQLite database for offline operations...")
+    database.init_db()
+    print("FastAPI: Offline database ready. Server listening for requests.")
+
+
+# ==========================================
+# Health & Status Endpoints
+# ==========================================
+
+@app.get("/")
+@app.get("/api/health")
+def health_check():
+    counts = database.get_counts()
+    return {
+        "status": "online",
+        "mode": "offline-first-sqlite",
+        "inquiries_stored": counts["total_messages"],
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+
+# ==========================================
+# Authentication (Works 100% Offline)
+# ==========================================
+
+@app.post("/api/login", response_model=TokenResponse)
+def admin_login(creds: AdminLogin):
+    admin = database.get_admin(creds.username)
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password"
+        )
+    
+    # Check password via bcrypt or fallback SHA256
     try:
-        # Seed Customer Inquiries
-        inquiries = fetch_from_firestore("customer_inquiries")
-        if not inquiries:
-            for item in orders_db:
-                push_to_firestore("customer_inquiries", {
-                    "name": item["name"],
-                    "phone": item["phone"],
-                    "email": item["email"],
-                    "service": item["service"],
-                    "message": item["message"],
-                    "timestamp": item["date"],
-                    "date": item["date"],
-                    "status": "Pending"
-                })
+        pw_valid = verify_password(creds.password, admin["hashed_password"])
+    except Exception:
+        import hashlib
+        pw_valid = hashlib.sha256(creds.password.encode()).hexdigest() == admin["hashed_password"]
 
-        # Seed History Logs
-        logs = fetch_from_firestore("history")
-        if not logs:
-            for log in system_logs_db:
-                push_to_firestore("history", log)
+    if not pw_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password"
+        )
 
-        # Seed Admin User Profile
-        users = fetch_from_firestore("users")
-        if not users:
-            push_to_firestore("users", {
-                "name": "Mohan K",
-                "email": "mohantn617@gmail.com",
-                "role": "admin",
-                "joinedDate": "2026-08-07"
-            })
-        print("FastAPI: Firebase Firestore collections successfully verified & populated!")
-    except Exception as e:
-        print("FastAPI startup seeding notice:", e)
+    access_token = create_access_token(data={"sub": admin["username"]})
+    return {"access_token": access_token, "token_type": "bearer"}
 
-# Local Fallback Lists
-orders_db = [
-    {
-        "name": "Mohan Raj",
-        "phone": "+91 9566801402",
-        "email": "mohan@gmail.com",
-        "service": "Calendar Printing",
-        "message": "Hi, I would like to order a Custom Tamil Calendar (Wall / Desk size). Please share pricing details.",
-        "date": "2026-07-10 10:30:15"
-    },
-    {
-        "name": "Siva Kumar",
-        "phone": "+91 9876543210",
-        "email": "siva@gmail.com",
-        "service": "Business Cards",
-        "message": "Interested in premium gold foil business cards. Please share catalog.",
-        "date": "2026-07-09 14:15:22"
-    }
-]
 
-user_history_db = [
-    {
-        "user_name": "mohantn617@gmail.com",
-        "action": "Login",
-        "timestamp": "2026-07-10 21:55:00",
-        "status": "Success"
-    }
-]
-
-system_logs_db = [
-    {
-        "activity": "Admin logged in successfully",
-        "user": "mohantn617@gmail.com",
-        "timestamp": "2026-07-10 21:55:02",
-        "type": "info"
-    }
-]
-
-class OrderRequest(BaseModel):
-    name: str
-    phone: str
-    email: str = None
-    service: str
-    message: str
+# ==========================================
+# Customer Orders & Inquiries (Offline Persist)
+# ==========================================
 
 @app.post("/order")
 @app.post("/api/order")
 @app.post("/contact")
 @app.post("/api/contact")
-async def create_order(order: OrderRequest):
+def create_order(order: OrderRequest, background_tasks: BackgroundTasks):
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_inquiry = {
+
+    # 1. Save directly to SQLite (Instant & 100% Offline)
+    new_id = database.insert_inquiry(
+        name=order.name,
+        phone=order.phone,
+        email=order.email or "",
+        service=order.service,
+        message=order.message,
+        date_str=current_time,
+        status=order.status or "Pending",
+        total_amount=order.total_amount or 0.0
+    )
+
+    database.insert_log(
+        activity=f"New inquiry/order received from {order.name} ({order.service})",
+        user=order.name,
+        timestamp_str=current_time,
+        log_type="success",
+        event="Order Placed"
+    )
+
+    # 2. Attempt asynchronous cloud sync in background (non-blocking)
+    cloud_payload = {
         "name": order.name,
         "phone": order.phone,
         "email": order.email or "",
         "service": order.service,
         "message": order.message,
-        "date": current_time,
         "timestamp": current_time,
-        "status": "Pending"
+        "date": current_time,
+        "status": order.status or "Pending",
+        "totalAmount": order.total_amount or 0.0
     }
-    orders_db.insert(0, new_inquiry)
-    
-    log_entry = {
-        "activity": f"New order request placed by {order.name}",
+    background_tasks.add_task(push_to_firestore_background, "customer_inquiries", cloud_payload)
+    background_tasks.add_task(push_to_firestore_background, "history", {
+        "activity": f"New inquiry from {order.name}",
         "user": order.name,
         "timestamp": current_time,
         "type": "success"
-    }
-    system_logs_db.insert(0, log_entry)
+    })
 
-    # Persist directly to Firebase Firestore
-    push_to_firestore("customer_inquiries", new_inquiry)
-    push_to_firestore("history", log_entry)
-    
-    return {"status": "success", "message": "Message saved to Firebase Firestore successfully!"}
+    return {
+        "status": "success",
+        "message": "Order saved successfully (offline SQLite storage)",
+        "id": new_id,
+        "date": current_time
+    }
+
+
+@app.post("/api/sync")
+def sync_offline_inquiries(inquiries: list[OrderRequest], background_tasks: BackgroundTasks):
+    """Bulk sync inquiries that were queued on client-side while offline."""
+    saved_count = 0
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for item in inquiries:
+        database.insert_inquiry(
+            name=item.name,
+            phone=item.phone,
+            email=item.email or "",
+            service=item.service,
+            message=item.message,
+            date_str=current_time,
+            status=item.status or "Synced from Offline Queue",
+            total_amount=item.total_amount or 0.0
+        )
+        saved_count += 1
+
+    if saved_count > 0:
+        database.insert_log(
+            activity=f"Synchronized {saved_count} offline orders to local database",
+            user="offline_sync",
+            timestamp_str=current_time,
+            log_type="info",
+            event="Offline Sync"
+        )
+
+    return {
+        "status": "success",
+        "synced_count": saved_count,
+        "message": f"Successfully synchronized {saved_count} offline inquiries!"
+    }
+
 
 @app.get("/orders")
 @app.get("/api/messages")
-async def get_messages():
-    fb_messages = fetch_from_firestore("customer_inquiries")
-    if fb_messages:
-        return fb_messages
-    return orders_db
+def get_messages():
+    records = database.get_inquiries()
+    return [
+        {
+            "id": str(r["id"]),
+            "name": r["name"],
+            "phone": r["phone"],
+            "email": r["email"],
+            "service": r["service"],
+            "message": r["message"],
+            "date": r["date"],
+            "timestamp": r["timestamp"],
+            "status": r["status"],
+            "totalAmount": r["total_amount"]
+        }
+        for r in records
+    ]
+
 
 @app.get("/api/stats")
-async def get_stats():
-    fb_messages = fetch_from_firestore("customer_inquiries")
-    fb_logs = fetch_from_firestore("history")
-    fb_users = fetch_from_firestore("users")
+def get_stats():
+    return database.get_counts()
 
-    msg_count = len(fb_messages) if fb_messages else len(orders_db)
-    logs_count = len(fb_logs) if fb_logs else len(system_logs_db)
-    users_count = len(fb_users) if fb_users else len(user_history_db)
-
-    return {
-        "total_messages": msg_count,
-        "total_history": users_count,
-        "total_logs": logs_count
-    }
 
 @app.get("/api/user-history")
-async def get_user_history():
-    fb_users = fetch_from_firestore("users")
-    if fb_users:
-        return fb_users
-    return user_history_db
+def get_user_history():
+    records = database.get_users_list()
+    return [
+        {
+            "id": str(u["id"]),
+            "name": u["name"],
+            "email": u["email"],
+            "role": u["role"],
+            "joinedDate": u["joinedDate"]
+        }
+        for u in records
+    ]
+
 
 @app.get("/api/logs")
-async def get_logs():
-    fb_logs = fetch_from_firestore("history")
-    if fb_logs:
-        return fb_logs
-    return system_logs_db
-
-@app.delete("/api/messages/{index}")
-async def delete_message(index: int):
-    if 0 <= index < len(orders_db):
-        removed = orders_db.pop(index)
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_item = {
-            "activity": f"Deleted customer inquiry from {removed['name']}",
-            "user": "mohantn617@gmail.com",
-            "timestamp": current_time,
-            "type": "warning"
+def get_logs():
+    records = database.get_logs_list()
+    return [
+        {
+            "id": str(l["id"]),
+            "activity": l["activity"],
+            "user": l["user"],
+            "timestamp": l["timestamp"],
+            "type": l["type"],
+            "event": l["event"]
         }
-        system_logs_db.insert(0, log_item)
-        push_to_firestore("history", log_item)
+        for l in records
+    ]
+
+
+@app.delete("/api/messages/{inquiry_id}")
+def delete_message(inquiry_id: str):
+    try:
+        record_id = int(inquiry_id)
+        success = database.delete_inquiry_by_id(record_id)
+    except ValueError:
+        all_inq = database.get_inquiries()
+        idx = int(inquiry_id)
+        if 0 <= idx < len(all_inq):
+            success = database.delete_inquiry_by_id(all_inq[idx]["id"])
+        else:
+            success = False
+
+    if success:
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        database.insert_log(
+            activity=f"Deleted customer inquiry ID {inquiry_id}",
+            user="admin",
+            timestamp_str=current_time,
+            log_type="warning",
+            event="Delete Inquiry"
+        )
         return {"status": "success", "message": "Inquiry deleted"}
-    return {"status": "error", "message": "Invalid index"}
+    return {"status": "error", "message": "Record not found"}
 
-@app.delete("/api/user-history/{index}")
-async def delete_user_history(index: int):
-    if 0 <= index < len(user_history_db):
-        user_history_db.pop(index)
-        return {"status": "success", "message": "Access record deleted"}
-    return {"status": "error", "message": "Invalid index"}
 
-@app.delete("/api/logs/{index}")
-async def delete_log(index: int):
-    if 0 <= index < len(system_logs_db):
-        system_logs_db.pop(index)
+@app.delete("/api/user-history/{user_id}")
+def delete_user_history(user_id: str):
+    try:
+        record_id = int(user_id)
+        success = database.delete_user_by_id(record_id)
+    except ValueError:
+        all_u = database.get_users_list()
+        idx = int(user_id)
+        if 0 <= idx < len(all_u):
+            success = database.delete_user_by_id(all_u[idx]["id"])
+        else:
+            success = False
+
+    if success:
+        return {"status": "success", "message": "User deleted"}
+    return {"status": "error", "message": "User not found"}
+
+
+@app.delete("/api/logs/{log_id}")
+def delete_log(log_id: str):
+    try:
+        record_id = int(log_id)
+        success = database.delete_log_by_id(record_id)
+    except ValueError:
+        all_l = database.get_logs_list()
+        idx = int(log_id)
+        if 0 <= idx < len(all_l):
+            success = database.delete_log_by_id(all_l[idx]["id"])
+        else:
+            success = False
+
+    if success:
         return {"status": "success", "message": "Log entry deleted"}
-    return {"status": "error", "message": "Invalid index"}
-
-
+    return {"status": "error", "message": "Log not found"}

@@ -35,7 +35,15 @@ function Navbar({
       <header id="navbar" className="navbar-header">
         <div className="navbar-container">
           <button onClick={() => handleNavClick('/')} className="logo" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            <img src="https://karpagamtraderssivakasi.com/images/logo.jpeg" alt="Karpagam Traders Logo" className="logo-img" />
+            <img 
+              src="/logo.png" 
+              alt="Karpagam Traders Goddess Emblem" 
+              className="logo-img" 
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/icons/icon-192x192.png';
+              }}
+            />
             <div className="logo-text-wrap">
               <span className="logo-brand">Karpagam <span>Traders</span></span>
               <span className="logo-tagline">Premium Printing Services</span>
@@ -147,6 +155,9 @@ function Navbar({
                           <i className="fa-solid fa-chart-line"></i> Admin Panel
                         </button>
                       )}
+                      <button onClick={onOpenCart} style={{ textAlign: 'left', width: '100%', padding: '10px 18px', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                        <i className="fa-solid fa-cart-shopping" style={{ color: '#8b0000' }}></i> My Cart ({cartCount})
+                      </button>
                       <button onClick={() => handleNavClick('/contact')} style={{ textAlign: 'left', width: '100%', padding: '10px 18px', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
                         <i className="fa-solid fa-paper-plane" style={{ color: '#2563eb' }}></i> Contact Support
                       </button>
@@ -166,7 +177,7 @@ function Navbar({
         </div>
       </header>
 
-      {/* Classic Style Fixed Mobile Bottom Navigation Bar: Home, Showcase, Shop, Contact */}
+      {/* Classic Style Fixed Mobile Bottom Navigation Bar: Home, Showcase, Shop, Cart, Contact */}
       <div className="mobile-bottom-navbar classic-style">
         <NavLink to="/" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
           <span className="nav-icon-wrap">
@@ -188,6 +199,38 @@ function Navbar({
           </span>
           <span className="nav-label">Shop</span>
         </NavLink>
+
+        <button 
+          onClick={onOpenCart} 
+          className="mobile-nav-item" 
+          style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}
+          title="Open Shopping Cart"
+        >
+          <span className="nav-icon-wrap" style={{ position: 'relative' }}>
+            <i className="fa-solid fa-cart-shopping"></i>
+            {cartCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-5px',
+                right: '-8px',
+                background: '#8b0000',
+                color: 'white',
+                fontSize: '0.62rem',
+                fontWeight: 900,
+                borderRadius: '50%',
+                width: '16px',
+                height: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+              }}>
+                {cartCount}
+              </span>
+            )}
+          </span>
+          <span className="nav-label">Cart</span>
+        </button>
 
         <NavLink to="/contact" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
           <span className="nav-icon-wrap">

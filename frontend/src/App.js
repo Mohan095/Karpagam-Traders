@@ -6,6 +6,7 @@ import Hero from './components/Hero';
 import CalendarShowcase from './components/CalendarShowcase';
 import ProductsSection from './components/ProductsSection';
 import ContactForm from './components/ContactForm';
+import CartDrawer from './components/CartDrawer';
 import { auth, db, googleProvider } from './firebase';
 import Dashboard from './pages/Dashboard';
 
@@ -74,8 +75,24 @@ function App() {
   ];
 
   const [products, setProducts] = useState(defaultProductsList);
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem('karpagam_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Sync cart with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('karpagam_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.warn("localStorage cart sync notice:", e);
+    }
+  }, [cart]);
 
   // Product actions synced with Firebase Firestore
   const handleAddProduct = async (newProd) => {
@@ -136,11 +153,38 @@ function App() {
   };
 
   const handleAddToCart = (item) => {
-    setCart(prev => [...prev, item]);
+    setCart(prev => {
+      const existingIdx = prev.findIndex(
+        p => p.productId === item.productId && p.quality === item.quality && p.size === item.size
+      );
+      if (existingIdx !== -1) {
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: (updated[existingIdx].quantity || 1) + (item.quantity || 1)
+        };
+        return updated;
+      }
+      return [...prev, { ...item, quantity: item.quantity || 1 }];
+    });
   };
 
   const handleRemoveFromCart = (index) => {
     setCart(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleUpdateQuantity = (index, delta) => {
+    setCart(prev => {
+      const updated = [...prev];
+      const current = updated[index];
+      if (!current) return prev;
+      const newQty = (current.quantity || 1) + delta;
+      if (newQty <= 0) {
+        return prev.filter((_, idx) => idx !== index);
+      }
+      updated[index] = { ...current, quantity: newQty };
+      return updated;
+    });
   };
 
   const handleClearCart = () => {
@@ -213,18 +257,6 @@ function App() {
   // Seeding and preloader fade out
   useEffect(() => {
     const runStartup = async () => {
-      // Clear all browser local storage cache on startup
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.clear();
-        }
-        if (typeof window !== 'undefined' && window.sessionStorage) {
-          window.sessionStorage.clear();
-        }
-      } catch (e) {
-        console.warn("Local storage clear notice:", e.message);
-      }
-
       // 1. Database Seeder & Firestore Data Sync
       if (db && auth) {
         try {
@@ -655,8 +687,13 @@ function App() {
       {!isAdminPage && (
         <div id="preloader" className={preloaderActive ? '' : 'fade-out'}>
           <div className="preloader-content">
-            <div className="preloader-icon">
-              <i className="fa-solid fa-calendar-days"></i>
+            <div className="preloader-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img 
+                src="/logo.png" 
+                alt="Karpagam Traders Goddess Emblem" 
+                style={{ width: '52px', height: '52px', objectFit: 'contain', borderRadius: '50%', boxShadow: '0 4px 15px rgba(212, 175, 55, 0.4)' }} 
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
             </div>
             <div className="preloader-title">Karpagam <span>Traders</span></div>
             <div className="preloader-bar">
@@ -1316,6 +1353,70 @@ function App() {
             </main>
           </div>
         </div>
+      )}
+
+      {/* Global Shopping Cart Drawer & WhatsApp Checkout */}
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cart={cart}
+        onRemoveFromCart={handleRemoveFromCart}
+        onClearCart={handleClearCart}
+        onUpdateQuantity={handleUpdateQuantity}
+        showAlert={showAlert}
+        user={user}
+      />
+
+      {/* Global Floating Cart Pill Button (accessible on all pages when cart has items) */}
+      {!isAdminPage && cart.length > 0 && !isCartOpen && (
+        <button
+          className="global-floating-cart-pill"
+          onClick={() => setIsCartOpen(true)}
+          title="Open Shopping Cart"
+          style={{
+            position: 'fixed',
+            bottom: '28px',
+            right: '28px',
+            zIndex: 9999,
+            background: 'linear-gradient(135deg, #8b0000 0%, #b22222 100%)',
+            color: 'white',
+            border: '2px solid rgba(212, 175, 55, 0.7)',
+            borderRadius: '50px',
+            padding: '12px 22px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            cursor: 'pointer',
+            boxShadow: '0 8px 30px rgba(139, 0, 0, 0.45)',
+            transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          }}
+        >
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <i className="fa-solid fa-cart-shopping" style={{ fontSize: '1.25rem', color: '#ffd700' }}></i>
+            <span style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-10px',
+              background: '#ffffff',
+              color: '#8b0000',
+              borderRadius: '50%',
+              width: '18px',
+              height: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.72rem',
+              fontWeight: 900,
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+            }}>
+              {cart.reduce((s, i) => s + (i.quantity || 1), 0)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
+            <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.9 }}>Cart ({cart.reduce((s, i) => s + (i.quantity || 1), 0)})</span>
+            <strong style={{ fontSize: '1rem', fontWeight: 800 }}>₹{cart.reduce((s, i) => s + (i.price * (i.quantity || 1)), 0)}</strong>
+          </div>
+        </button>
       )}
 
     </div>

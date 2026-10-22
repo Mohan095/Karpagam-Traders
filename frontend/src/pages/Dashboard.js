@@ -168,8 +168,16 @@ function Dashboard({
       {/* 1. Sidebar Menu */}
       <aside className="admin-sidebar">
         <div className="sidebar-header-brand">
-          <div className="brand-icon-box">
-            <i className="fa-solid fa-shield-halved"></i>
+          <div className="brand-icon-box" style={{ overflow: 'hidden', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img 
+              src="/logo.png" 
+              alt="Karpagam Traders Emblem" 
+              style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/icons/icon-192x192.png';
+              }} 
+            />
           </div>
           <div className="brand-title-box">
             <h3>Admin <span>Control</span></h3>

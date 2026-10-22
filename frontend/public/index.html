@@ -3,8 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0f172a" />
+  <link rel="icon" type="image/png" sizes="72x72" href="%PUBLIC_URL%/icons/icon-72x72.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/icons/icon-192x192.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  
+  <!-- PWA Theme Color -->
+  <meta name="theme-color" content="#8B0000" />
+  <meta name="msapplication-navbutton-color" content="#8B0000" />
+  
+  <!-- Primary Meta Tags -->
+  <title>Karpagam Traders Sivakasi | Premium Calendar & Offset Printers</title>
   <meta
     name="description"
     content="Karpagam Traders Sivakasi - Premium quality offset printers specializing in Daily Tear-off Calendars, Monthly Wall Calendars, diaries, and custom printing services."
@@ -12,12 +20,27 @@
   <meta name="keywords" content="Karpagam Traders, Sivakasi printing, Daily Calendar Sivakasi, Monthly Calendar printing, Offset printers, Tear-off calendars, Sivakasi calendars" />
   <meta name="author" content="Karpagam Traders" />
   
+  <!-- Web App Manifest (PWABuilder & W3C Standard) -->
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  
+  <!-- iOS Safari PWA Meta Tags & Icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Karpagam Traders" />
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="%PUBLIC_URL%/icons/icon-152x152.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/icons/icon-192x192.png" />
+
+  <!-- Microsoft Tiles Meta Tags -->
+  <meta name="msapplication-TileColor" content="#8B0000" />
+  <meta name="msapplication-TileImage" content="%PUBLIC_URL%/icons/icon-144x144.png" />
+
+  <!-- Preconnect & Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <title>Karpagam Traders Sivakasi | Premium Calendar & Offset Printers</title>
   <!-- Firebase Compat CDN SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
