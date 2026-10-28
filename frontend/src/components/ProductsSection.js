@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { db } from '../firebase';
-import apiService from '../api';
 
 function ProductsSection({ 
   products, 
@@ -18,34 +16,17 @@ function ProductsSection({
   const [selectedQuality, setSelectedQuality] = useState('Deluxe');
   const [selectedSize, setSelectedSize] = useState('A3 Wall Mount');
   const [optionsModalOpen, setOptionsModalOpen] = useState(false);
-  const [internalCartOpen, setInternalCartOpen] = useState(false);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
 
   // Single-column slider indexes for Row 1 (Daily), Row 2 (Monthly), Row 3 (Cake)
   const [dailyIndex, setDailyIndex] = useState(0);
   const [monthlyIndex, setMonthlyIndex] = useState(0);
   const [specialtyIndex, setSpecialtyIndex] = useState(0);
 
-  // Payment Form State
-  const [payName, setPayName] = useState('');
-  const [payEmail, setPayEmail] = useState('');
-  const [payMobile, setPayMobile] = useState('');
-  const [payAddress, setPayAddress] = useState('');
-  const [payMethod, setPayMethod] = useState('gpay');
-  const [qrGenerated, setQrGenerated] = useState(false);
-
-  // Cart open state controlled externally or internally
-  const cartOpen = isCartOpen || internalCartOpen;
-
-  const handleCloseCartDrawer = () => {
-    setInternalCartOpen(false);
-    if (onCloseCart) onCloseCart();
-  };
-
-  const handleOpenCartDrawer = () => {
-    if (onOpenCart) onOpenCart();
-    setInternalCartOpen(true);
-  };
+  // Split products by category for 3 explicit rows
+  const dailyProducts = products.filter(p => p.category === 'daily');
+  const monthlyProducts = products.filter(p => p.category === 'monthly');
+  const specialtyProducts = products.filter(p => p.category === 'specialty');
 
   // Quality multiplier map
   const qualityPriceMultiplier = {
@@ -85,109 +66,7 @@ function ProductsSection({
     if (showAlert) showAlert(`${selectedProduct.name} (${selectedQuality}, ${selectedSize}) added to cart!`, 'success');
   };
 
-  const cartTotal = cart.reduce((acc, item) => acc + item.price, 0);
 
-  // Split products by category for 3 explicit rows
-  const dailyProducts = products.filter(p => p.category === 'daily');
-  const monthlyProducts = products.filter(p => p.category === 'monthly');
-  const specialtyProducts = products.filter(p => p.category === 'specialty');
-
-  const handleSendWhatsAppOrder = async (e) => {
-    e.preventDefault();
-    if (cart.length === 0) {
-      if (showAlert) showAlert("Your cart is empty!", "warning");
-      return;
-    }
-    if (!payName.trim() || !payMobile.trim() || !payAddress.trim()) {
-      if (showAlert) showAlert("Please fill in all delivery details.", "error");
-      return;
-    }
-
-    const itemsSummary = cart.map(item => `• *${item.name}* (${item.quality}, ${item.size}) - ₹${item.price}`).join('\n');
-    const waMessage = 
-      `*NEW CALENDAR ORDER - KARPAGAM TRADERS*\n` +
-      `----------------------------------------\n` +
-      `👤 *Customer Name:* ${payName}\n` +
-      `📱 *Mobile:* ${payMobile}\n` +
-      `📧 *Email:* ${payEmail || 'N/A'}\n` +
-      `📍 *Address:* ${payAddress}\n` +
-      `----------------------------------------\n` +
-      `🛒 *Ordered Items (${cart.length}):*\n${itemsSummary}\n` +
-      `----------------------------------------\n` +
-      `💰 *Total Amount:* ₹${cartTotal}\n` +
-      `----------------------------------------\n` +
-      `Please confirm my order and share payment details. Thank you!`;
-
-    // 1. Open WhatsApp with prefilled message
-    const whatsappUrl = `https://wa.me/919566801402?text=${encodeURIComponent(waMessage)}`;
-    window.open(whatsappUrl, '_blank');
-
-    const orderPayload = {
-      name: payName || 'Customer',
-      phone: payMobile || '',
-      email: payEmail || '',
-      service: `Shop Order via WhatsApp (₹${cartTotal})`,
-      message: `Items:\n${itemsSummary}\nDelivery Address: ${payAddress}`
-    };
-
-    // 2. Log Order to Python FastAPI backend
-    try {
-      await fetch('http://127.0.0.1:8000/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload)
-      });
-    } catch (err) {
-      console.warn("Python backend order logging error:", err);
-    }
-
-    // 3. Save Order to Firebase Firestore
-    if (db) {
-      try {
-        const now = new Date();
-        const timestampStr = now.getFullYear() + '-' +
-          String(now.getMonth() + 1).padStart(2, '0') + '-' +
-          String(now.getDate()).padStart(2, '0') + ' ' +
-          String(now.getHours()).padStart(2, '0') + ':' +
-          String(now.getMinutes()).padStart(2, '0') + ':' +
-          String(now.getSeconds()).padStart(2, '0');
-
-        // Customer Inquiry Document
-        await db.collection("customer_inquiries").add({
-          name: orderPayload.name,
-          phone: orderPayload.phone,
-          email: orderPayload.email,
-          service: orderPayload.service,
-          message: orderPayload.message,
-          timestamp: timestampStr,
-          date: timestampStr,
-          status: "Order via WhatsApp"
-        });
-
-        // Audit & History Activity Document
-        await db.collection("history").add({
-          email: orderPayload.email || orderPayload.name,
-          event: `Placed Shop Order via WhatsApp (₹${cartTotal})`,
-          activity: `Placed Shop Order via WhatsApp (₹${cartTotal}) by ${orderPayload.name}`,
-          user: orderPayload.name,
-          timestamp: timestampStr,
-          type: "success"
-        });
-      } catch (fbErr) {
-        console.warn("Firebase order save warning:", fbErr);
-      }
-    }
-
-    onClearCart();
-    setPaymentModalOpen(false);
-    handleCloseCartDrawer();
-    setQrGenerated(false);
-    setPayName('');
-    setPayEmail('');
-    setPayMobile('');
-    setPayAddress('');
-    if (showAlert) showAlert("Order details sent via WhatsApp! Thank you for choosing Karpagam Traders.", "success");
-  };
 
   // Render individual product card WITHOUT internal < > icons on the image
   const renderProductCard = (product, isSideBlur = false) => {
@@ -327,7 +206,7 @@ function ProductsSection({
         </button>
 
         {/* View Cart Button */}
-        <button className="cart-trigger-btn" onClick={handleOpenCartDrawer}>
+        <button className="cart-trigger-btn" onClick={onOpenCart}>
           <i className="fa-solid fa-cart-shopping"></i>
           <span>View Cart</span>
           <span className="cart-badge-count">{cart.length}</span>
@@ -440,8 +319,6 @@ function ProductsSection({
             </div>
           </div>
         </div>
-      )}
-
       )}
     </section>
   );

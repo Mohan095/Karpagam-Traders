@@ -25,8 +25,8 @@ function CartDrawer({
   // Update user details if user logs in
   useEffect(() => {
     if (user) {
-      if (!payName && user.name) setPayName(user.name);
-      if (!payEmail && user.email) setPayEmail(user.email);
+      setPayName(prev => prev || user.name || '');
+      setPayEmail(prev => prev || user.email || '');
     }
   }, [user]);
 

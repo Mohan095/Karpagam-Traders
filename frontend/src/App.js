@@ -10,6 +10,39 @@ import CartDrawer from './components/CartDrawer';
 import { auth, db, googleProvider } from './firebase';
 import Dashboard from './pages/Dashboard';
 
+// Default Products List (Total 24 Products: 8 Daily, 8 Monthly, 8 Specialty)
+const defaultProductsList = [
+  // Daily Products (8)
+  { id: 1, name: "Daily Calendar 1", price: 299, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Standard daily tear-off sheet calendar with auspicious Nalla Neram." },
+  { id: 2, name: "Daily Calendar 2", price: 399, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Deluxe daily calendar board print with spiritual artwork." },
+  { id: 3, name: "Daily Calendar 3", price: 249, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact daily Tamil calendar with vibrant typography." },
+  { id: 4, name: "Daily Calendar 4", price: 449, category: "daily", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Executive daily calendar sheet with gold foil binder header." },
+  { id: 5, name: "Daily Calendar 5", price: 199, category: "daily", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Traditional pocket size daily calendar for home & desk." },
+  { id: 6, name: "Daily Calendar 6", price: 349, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Religious temple daily tear-off calendar sheet." },
+  { id: 7, name: "Daily Calendar 7", price: 599, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Jumbo size daily calendar board with metal slider clip." },
+  { id: 8, name: "Daily Calendar 8", price: 229, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Classic Sivakasi printed tear-off calendar." },
+
+  // Monthly Products (8)
+  { id: 9, name: "Monthly Calendar 1", price: 499, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "12-Sheet Monthly wall calendar with high-gsm glossy paper." },
+  { id: 10, name: "Monthly Calendar 2", price: 599, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Landscape Monthly Tamil wall calendar with metallic tin rim." },
+  { id: 11, name: "Monthly Calendar 3", price: 449, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Corporate logo printed 12-page monthly wall sheet." },
+  { id: 12, name: "Monthly Calendar 4", price: 549, category: "monthly", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Double-sided monthly calendar with holiday highlighted list." },
+  { id: 13, name: "Monthly Calendar 5", price: 699, category: "monthly", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Royal Gold Edition monthly wall calendar 2027." },
+  { id: 14, name: "Monthly Calendar 6", price: 799, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Custom photo monthly wall calendar with custom branding." },
+  { id: 15, name: "Monthly Calendar 7", price: 349, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact 6-sheet monthly wall hanging calendar." },
+  { id: 16, name: "Monthly Calendar 8", price: 529, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Traditional Tamil Panchangam monthly wall calendar." },
+
+  // Cake & Specialty Products (8)
+  { id: 17, name: "Cake & Bakery Calendar 1", price: 650, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Specialty desk calendar designed for bakeries & cake shops." },
+  { id: 18, name: "Cake & Bakery Calendar 2", price: 750, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Triangular executive desk stand calendar with glossy varnish." },
+  { id: 19, name: "Specialty Calendar 3", price: 899, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Bespoke leatherette frame desk calendar with planner diary." },
+  { id: 20, name: "Specialty Calendar 4", price: 450, category: "specialty", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Miniature acrylic desk calendar for study tables." },
+  { id: 21, name: "Specialty Calendar 5", price: 950, category: "specialty", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Premium Gold embossed souvenir calendar & diary set." },
+  { id: 22, name: "Specialty Calendar 6", price: 320, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Eco-friendly recycled paper desk calendar." },
+  { id: 23, name: "Specialty Calendar 7", price: 480, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Magnetic fridge calendar sheet with tear-off memo pads." },
+  { id: 24, name: "Specialty Calendar 8", price: 390, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Pocket Tamil Panchangam calendar diary." }
+];
+
 function App() {
   const [preloaderActive, setPreloaderActive] = useState(true);
   const [user, setUser] = useState(null);
@@ -40,39 +73,6 @@ function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
-
-  // Default Products List (Total 24 Products: 8 Daily, 8 Monthly, 8 Specialty)
-  const defaultProductsList = [
-    // Daily Products (8)
-    { id: 1, name: "Daily Calendar 1", price: 299, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Standard daily tear-off sheet calendar with auspicious Nalla Neram." },
-    { id: 2, name: "Daily Calendar 2", price: 399, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Deluxe daily calendar board print with spiritual artwork." },
-    { id: 3, name: "Daily Calendar 3", price: 249, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact daily Tamil calendar with vibrant typography." },
-    { id: 4, name: "Daily Calendar 4", price: 449, category: "daily", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Executive daily calendar sheet with gold foil binder header." },
-    { id: 5, name: "Daily Calendar 5", price: 199, category: "daily", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Traditional pocket size daily calendar for home & desk." },
-    { id: 6, name: "Daily Calendar 6", price: 349, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Religious temple daily tear-off calendar sheet." },
-    { id: 7, name: "Daily Calendar 7", price: 599, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Jumbo size daily calendar board with metal slider clip." },
-    { id: 8, name: "Daily Calendar 8", price: 229, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Classic Sivakasi printed tear-off calendar." },
-
-    // Monthly Products (8)
-    { id: 9, name: "Monthly Calendar 1", price: 499, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "12-Sheet Monthly wall calendar with high-gsm glossy paper." },
-    { id: 10, name: "Monthly Calendar 2", price: 599, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Landscape Monthly Tamil wall calendar with metallic tin rim." },
-    { id: 11, name: "Monthly Calendar 3", price: 449, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Corporate logo printed 12-page monthly wall sheet." },
-    { id: 12, name: "Monthly Calendar 4", price: 549, category: "monthly", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Double-sided monthly calendar with holiday highlighted list." },
-    { id: 13, name: "Monthly Calendar 5", price: 699, category: "monthly", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Royal Gold Edition monthly wall calendar 2027." },
-    { id: 14, name: "Monthly Calendar 6", price: 799, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Custom photo monthly wall calendar with custom branding." },
-    { id: 15, name: "Monthly Calendar 7", price: 349, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact 6-sheet monthly wall hanging calendar." },
-    { id: 16, name: "Monthly Calendar 8", price: 529, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Traditional Tamil Panchangam monthly wall calendar." },
-
-    // Cake & Specialty Products (8)
-    { id: 17, name: "Cake & Bakery Calendar 1", price: 650, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Specialty desk calendar designed for bakeries & cake shops." },
-    { id: 18, name: "Cake & Bakery Calendar 2", price: 750, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Triangular executive desk stand calendar with glossy varnish." },
-    { id: 19, name: "Specialty Calendar 3", price: 899, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Bespoke leatherette frame desk calendar with planner diary." },
-    { id: 20, name: "Specialty Calendar 4", price: 450, category: "specialty", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Miniature acrylic desk calendar for study tables." },
-    { id: 21, name: "Specialty Calendar 5", price: 950, category: "specialty", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Premium Gold embossed souvenir calendar & diary set." },
-    { id: 22, name: "Specialty Calendar 6", price: 320, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Eco-friendly recycled paper desk calendar." },
-    { id: 23, name: "Specialty Calendar 7", price: 480, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Magnetic fridge calendar sheet with tear-off memo pads." },
-    { id: 24, name: "Specialty Calendar 8", price: 390, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Pocket Tamil Panchangam calendar diary." }
-  ];
 
   const [products, setProducts] = useState(defaultProductsList);
   const [cart, setCart] = useState(() => {

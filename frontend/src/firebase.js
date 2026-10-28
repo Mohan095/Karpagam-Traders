@@ -12,12 +12,9 @@ if (!window.firebase) {
   console.error("Firebase SDK not loaded from CDN.");
 }
 
-let app;
-if (window.firebase && !window.firebase.apps.length) {
-  app = window.firebase.initializeApp(firebaseConfig);
-} else if (window.firebase) {
-  app = window.firebase.app();
-}
+export const app = (window.firebase && !window.firebase.apps.length)
+  ? window.firebase.initializeApp(firebaseConfig)
+  : (window.firebase ? window.firebase.app() : null);
 
 export const auth = window.firebase ? window.firebase.auth() : null;
 export const db = window.firebase ? window.firebase.firestore() : null;
