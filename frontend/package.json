@@ -17,6 +17,10 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "allowScripts": {
+    "core-js": true,
+    "core-js-pure": true
+  },
   "eslintConfig": {
     "extends": [
       "react-app"
