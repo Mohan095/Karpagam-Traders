@@ -6,7 +6,7 @@ import urllib.request
 import urllib.error
 
 import database
-from models import OrderRequest, ContactFormSubmit, AdminLogin, TokenResponse
+from models import OrderRequest, ContactFormSubmit, AdminLogin, TokenResponse, NotificationItem
 from security import verify_password, create_access_token
 
 app = FastAPI(
@@ -320,3 +320,69 @@ def delete_log(log_id: str):
     if success:
         return {"status": "success", "message": "Log entry deleted"}
     return {"status": "error", "message": "Log not found"}
+
+
+# ==========================================
+# Notifications & Daily News Endpoints
+# ==========================================
+
+@app.get("/api/notifications")
+def get_notifications(only_active: bool = False):
+    return database.get_notifications(only_active=only_active)
+
+
+@app.post("/api/notifications")
+def create_notification(item: NotificationItem, background_tasks: BackgroundTasks):
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_str = item.date or current_time
+
+    new_id = database.insert_notification(
+        title=item.title,
+        content=item.content,
+        category=item.category or "Daily News",
+        image=item.image or "",
+        is_pinned=bool(item.is_pinned),
+        is_active=bool(item.is_active),
+        date_str=date_str
+    )
+
+    database.insert_log(
+        activity=f"Admin published notification: {item.title}",
+        user="admin",
+        timestamp_str=current_time,
+        log_type="info",
+        event="New Notification"
+    )
+
+    # Cloud sync if Firestore is reachable
+    cloud_payload = {
+        "title": item.title,
+        "content": item.content,
+        "category": item.category or "Daily News",
+        "image": item.image or "",
+        "is_pinned": bool(item.is_pinned),
+        "is_active": bool(item.is_active),
+        "date": date_str
+    }
+    background_tasks.add_task(push_to_firestore_background, "notifications", cloud_payload)
+
+    return {
+        "status": "success",
+        "message": "Notification published successfully",
+        "id": new_id,
+        "date": date_str
+    }
+
+
+@app.delete("/api/notifications/{notification_id}")
+def delete_notification(notification_id: str):
+    try:
+        record_id = int(notification_id)
+        success = database.delete_notification_by_id(record_id)
+    except ValueError:
+        success = False
+
+    if success:
+        return {"status": "success", "message": "Notification deleted"}
+    return {"status": "error", "message": "Notification not found"}
+

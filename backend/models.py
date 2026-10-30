@@ -32,6 +32,18 @@ class AdminLogin(BaseModel):
     password: str
 
 
+class NotificationItem(BaseModel):
+    """Schema for admin notifications and daily news."""
+    id: Optional[str] = None
+    title: str = Field(..., min_length=2)
+    content: str = Field(..., min_length=2)
+    category: Optional[str] = "Daily News"
+    image: Optional[str] = ""
+    is_pinned: Optional[bool] = False
+    is_active: Optional[bool] = True
+    date: Optional[str] = ""
+
+
 class TokenResponse(BaseModel):
     """Schema for login response containing JWT access token."""
     access_token: str

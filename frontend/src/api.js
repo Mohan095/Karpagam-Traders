@@ -53,6 +53,24 @@ export const apiService = {
     const response = await apiClient.get('/stats');
     return response.data;
   },
+
+  // Fetch Notifications & Daily News
+  getNotifications: async (onlyActive = false) => {
+    const response = await apiClient.get(`/notifications?only_active=${onlyActive}`);
+    return response.data;
+  },
+
+  // Create Notification
+  createNotification: async (data) => {
+    const response = await apiClient.post('/notifications', data);
+    return response.data;
+  },
+
+  // Delete Notification
+  deleteNotification: async (id) => {
+    const response = await apiClient.delete(`/notifications/${id}`);
+    return response.data;
+  },
 };
 
 export default apiService;

@@ -83,7 +83,7 @@ function ProductsSection({
             className="product-card-img"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop';
+              e.target.src = '/assets/daily 1.jpeg';
             }}
           />
 

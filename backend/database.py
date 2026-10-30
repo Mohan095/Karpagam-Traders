@@ -67,6 +67,20 @@ def init_db():
         )
     """)
 
+    # 5. Notifications & Daily News table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            category TEXT DEFAULT 'Daily News',
+            image TEXT DEFAULT '',
+            is_pinned INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            date TEXT NOT NULL
+        )
+    """)
+
     conn.commit()
 
     # Seed Admin User if not exists
@@ -217,3 +231,52 @@ def get_admin(username: str):
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+# CRUD Operations for Notifications
+def insert_notification(title: str, content: str, category: str = "Daily News", image: str = "", is_pinned: bool = False, is_active: bool = True, date_str: str = ""):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO notifications (title, content, category, image, is_pinned, is_active, date)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (title, content, category, image, 1 if is_pinned else 0, 1 if is_active else 0, date_str))
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+def get_notifications(only_active: bool = False):
+    conn = get_connection()
+    cursor = conn.cursor()
+    if only_active:
+        cursor.execute("SELECT * FROM notifications WHERE is_active = 1 ORDER BY is_pinned DESC, id DESC")
+    else:
+        cursor.execute("SELECT * FROM notifications ORDER BY is_pinned DESC, id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        {
+            "id": str(r["id"]),
+            "title": r["title"],
+            "content": r["content"],
+            "category": r["category"],
+            "image": r["image"],
+            "is_pinned": bool(r["is_pinned"]),
+            "is_active": bool(r["is_active"]),
+            "date": r["date"]
+        }
+        for r in rows
+    ]
+
+
+def delete_notification_by_id(item_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM notifications WHERE id = ?", (item_id,))
+    deleted = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+

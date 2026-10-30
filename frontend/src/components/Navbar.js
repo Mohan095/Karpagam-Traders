@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NotificationModal, AllUpdatesModal } from './NotificationSection';
 
 function Navbar({ 
   user, 
   cartCount = 0,
+  notifications = [],
   onOpenCart, 
   onLogout, 
   onOpenAuth, 
@@ -11,11 +13,26 @@ function Navbar({
   showAlert 
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [updatesOpen, setUpdatesOpen] = useState(false);
+  const [selectedNotifForModal, setSelectedNotifForModal] = useState(null);
+  const [allUpdatesModalOpen, setAllUpdatesModalOpen] = useState(false);
+
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isHomePage = location.pathname === '/';
+  const activeNotifications = notifications.filter(n => n.is_active !== false);
 
   const toggleDropdown = (e) => {
     e.stopPropagation();
     setDropdownOpen(!dropdownOpen);
+    setUpdatesOpen(false);
+  };
+
+  const toggleUpdates = (e) => {
+    e.stopPropagation();
+    setUpdatesOpen(!updatesOpen);
+    setDropdownOpen(false);
   };
 
   const handleNavClick = (path) => {
@@ -23,11 +40,14 @@ function Navbar({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Close dropdown on clicking window
+  // Close dropdowns on clicking outside
   React.useEffect(() => {
-    const closeDropdown = () => setDropdownOpen(false);
-    window.addEventListener('click', closeDropdown);
-    return () => window.removeEventListener('click', closeDropdown);
+    const closeAll = () => {
+      setDropdownOpen(false);
+      setUpdatesOpen(false);
+    };
+    window.addEventListener('click', closeAll);
+    return () => window.removeEventListener('click', closeAll);
   }, []);
 
   return (
@@ -67,11 +87,242 @@ function Navbar({
           </nav>
 
           <div className="nav-actions">
-            {/* Header Cart Drawer Icon Trigger */}
-            <button className="nav-cart-icon-btn" onClick={onOpenCart} title="Open Shopping Cart">
-              <i className="fa-solid fa-cart-shopping"></i>
-              {cartCount > 0 && <span className="nav-cart-badge">{cartCount}</span>}
-            </button>
+            {/* Header Notification / Updates Bell Icon Trigger */}
+            <div className="nav-notif-wrapper" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+              <button 
+                className={`nav-notif-icon-btn ${updatesOpen ? 'open' : ''}`}
+                onClick={toggleUpdates} 
+                title="View Latest News & Announcements"
+                style={{
+                  background: updatesOpen ? 'var(--primary)' : 'rgba(139, 0, 0, 0.08)',
+                  color: updatesOpen ? '#ffffff' : 'var(--primary)',
+                  border: '1.5px solid rgba(139, 0, 0, 0.2)',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.15rem',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'all 0.25s ease',
+                  marginRight: '8px'
+                }}
+              >
+                <i className="fa-solid fa-bell"></i>
+                {activeNotifications.length > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-3px',
+                    right: '-3px',
+                    background: '#f59e0b',
+                    color: '#1e293b',
+                    fontSize: '0.68rem',
+                    fontWeight: 900,
+                    width: '19px',
+                    height: '19px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
+                    border: '1.5px solid white'
+                  }}>
+                    {activeNotifications.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Updates Dropdown Panel */}
+              {updatesOpen && (
+                <div className="updates-dropdown-panel" style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 12px)',
+                  right: 0,
+                  width: '360px',
+                  maxWidth: '92vw',
+                  background: '#ffffff',
+                  borderRadius: '20px',
+                  boxShadow: '0 18px 45px rgba(0, 0, 0, 0.22)',
+                  border: '1px solid rgba(139, 0, 0, 0.15)',
+                  overflow: 'hidden',
+                  zIndex: 1000,
+                  textAlign: 'left'
+                }}>
+                  {/* Panel Header */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #8b0000 0%, #b30000 100%)',
+                    color: 'white',
+                    padding: '14px 18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <i className="fa-solid fa-bullhorn" style={{ color: '#ffd700', fontSize: '1.1rem' }}></i>
+                      <div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 800 }}>Daily News & Updates</div>
+                        <div style={{ fontSize: '0.72rem', opacity: 0.85 }}>நாள்தோறும் செய்திகள்</div>
+                      </div>
+                    </div>
+                    <span style={{
+                      background: 'rgba(255, 215, 0, 0.25)',
+                      color: '#ffd700',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      padding: '3px 8px',
+                      borderRadius: '10px'
+                    }}>
+                      {activeNotifications.length} Active
+                    </span>
+                  </div>
+
+                  {/* Panel Updates List */}
+                  <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '6px 0' }}>
+                    {activeNotifications.length > 0 ? (
+                      activeNotifications.map((n) => (
+                        <div 
+                          key={n.id}
+                          onClick={() => {
+                            setSelectedNotifForModal(n);
+                            setUpdatesOpen(false);
+                          }}
+                          style={{
+                            padding: '12px 16px',
+                            borderBottom: '1px solid #f1f5f9',
+                            cursor: 'pointer',
+                            transition: 'background 0.2s ease',
+                            display: 'flex',
+                            gap: '12px',
+                            alignItems: 'flex-start'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; }}
+                        >
+                          {n.image && (
+                            <img 
+                              src={n.image} 
+                              alt={n.title} 
+                              style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '10px',
+                                objectFit: 'cover',
+                                flexShrink: 0,
+                                border: '1px solid #e2e8f0'
+                              }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = '/assets/daily 1.jpeg';
+                              }}
+                            />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{
+                                background: n.category === 'Special Offer' ? '#fef3c7' : '#e0f2fe',
+                                color: n.category === 'Special Offer' ? '#b45309' : '#0369a1',
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: '6px',
+                                textTransform: 'uppercase'
+                              }}>
+                                {n.category || 'News'}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{n.date}</span>
+                            </div>
+                            <h5 style={{
+                              margin: 0,
+                              fontSize: '0.85rem',
+                              fontWeight: 800,
+                              color: 'var(--primary)',
+                              lineHeight: 1.3,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {n.title}
+                            </h5>
+                            <p style={{
+                              margin: '3px 0 0',
+                              fontSize: '0.78rem',
+                              color: '#64748b',
+                              lineHeight: 1.4,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              {n.content}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '30px 20px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                        <i className="fa-solid fa-bell-slash" style={{ fontSize: '1.8rem', opacity: 0.3, marginBottom: '8px', display: 'block' }}></i>
+                        No new updates right now. Stay tuned!
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Panel Footer */}
+                  <div style={{
+                    padding: '10px 16px',
+                    background: '#f8fafc',
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <button 
+                      onClick={() => {
+                        setUpdatesOpen(false);
+                        setAllUpdatesModalOpen(true);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      View All in Window <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.7rem' }}></i>
+                    </button>
+
+                    <a 
+                      href="https://wa.me/919566801402"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: '#16a34a',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <i className="fa-brands fa-whatsapp"></i> Chat Support
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Header Cart Drawer Icon Trigger - HIDDEN ON HOME PAGE */}
+            {!isHomePage && (
+              <button className="nav-cart-icon-btn" onClick={onOpenCart} title="Open Shopping Cart">
+                <i className="fa-solid fa-cart-shopping"></i>
+                {cartCount > 0 && <span className="nav-cart-badge">{cartCount}</span>}
+              </button>
+            )}
 
             <div id="header-auth-action">
               {user ? (
@@ -122,7 +373,7 @@ function Navbar({
                     border: '1px solid rgba(139,0,0,0.12)',
                     padding: '16px 0',
                     zIndex: 1000,
-                    textStyle: 'left'
+                    textAlign: 'left'
                   }}>
                     <div className="dropdown-user-header" style={{
                       padding: '0 18px 14px',
@@ -155,9 +406,15 @@ function Navbar({
                           <i className="fa-solid fa-chart-line"></i> Admin Panel
                         </button>
                       )}
-                      <button onClick={onOpenCart} style={{ textAlign: 'left', width: '100%', padding: '10px 18px', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
-                        <i className="fa-solid fa-cart-shopping" style={{ color: '#8b0000' }}></i> My Cart ({cartCount})
-                      </button>
+                      {!isHomePage ? (
+                        <button onClick={onOpenCart} style={{ textAlign: 'left', width: '100%', padding: '10px 18px', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                          <i className="fa-solid fa-cart-shopping" style={{ color: '#8b0000' }}></i> My Cart ({cartCount})
+                        </button>
+                      ) : (
+                        <button onClick={() => setAllUpdatesModalOpen(true)} style={{ textAlign: 'left', width: '100%', padding: '10px 18px', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                          <i className="fa-solid fa-bell" style={{ color: '#8b0000' }}></i> Daily Updates ({activeNotifications.length})
+                        </button>
+                      )}
                       <button onClick={() => handleNavClick('/contact')} style={{ textAlign: 'left', width: '100%', padding: '10px 18px', cursor: 'pointer', background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
                         <i className="fa-solid fa-paper-plane" style={{ color: '#2563eb' }}></i> Contact Support
                       </button>
@@ -177,7 +434,26 @@ function Navbar({
         </div>
       </header>
 
-      {/* Classic Style Fixed Mobile Bottom Navigation Bar: Home, Showcase, Shop, Cart, Contact */}
+      {/* Detail Modal for update clicked in dropdown */}
+      {selectedNotifForModal && (
+        <NotificationModal 
+          selectedNews={selectedNotifForModal} 
+          onClose={() => setSelectedNotifForModal(null)} 
+        />
+      )}
+
+      {/* Comprehensive All Updates Modal */}
+      <AllUpdatesModal 
+        notifications={notifications}
+        isOpen={allUpdatesModalOpen}
+        onClose={() => setAllUpdatesModalOpen(false)}
+        onSelectNotification={(item) => {
+          setAllUpdatesModalOpen(false);
+          setSelectedNotifForModal(item);
+        }}
+      />
+
+      {/* Classic Style Fixed Mobile Bottom Navigation Bar: Home, Showcase, Shop, Updates/Cart, Contact */}
       <div className="mobile-bottom-navbar classic-style">
         <NavLink to="/" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
           <span className="nav-icon-wrap">
@@ -200,37 +476,72 @@ function Navbar({
           <span className="nav-label">Shop</span>
         </NavLink>
 
-        <button 
-          onClick={onOpenCart} 
-          className="mobile-nav-item" 
-          style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}
-          title="Open Shopping Cart"
-        >
-          <span className="nav-icon-wrap" style={{ position: 'relative' }}>
-            <i className="fa-solid fa-cart-shopping"></i>
-            {cartCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '-5px',
-                right: '-8px',
-                background: '#8b0000',
-                color: 'white',
-                fontSize: '0.62rem',
-                fontWeight: 900,
-                borderRadius: '50%',
-                width: '16px',
-                height: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-              }}>
-                {cartCount}
-              </span>
-            )}
-          </span>
-          <span className="nav-label">Cart</span>
-        </button>
+        {/* On Home page: show Updates (Bell icon); on other pages: show Cart */}
+        {isHomePage ? (
+          <button 
+            onClick={() => setAllUpdatesModalOpen(true)} 
+            className="mobile-nav-item" 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}
+            title="View Daily Updates & Announcements"
+          >
+            <span className="nav-icon-wrap" style={{ position: 'relative' }}>
+              <i className="fa-solid fa-bell"></i>
+              {activeNotifications.length > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  right: '-8px',
+                  background: '#f59e0b',
+                  color: '#1e293b',
+                  fontSize: '0.62rem',
+                  fontWeight: 900,
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                }}>
+                  {activeNotifications.length}
+                </span>
+              )}
+            </span>
+            <span className="nav-label">Updates</span>
+          </button>
+        ) : (
+          <button 
+            onClick={onOpenCart} 
+            className="mobile-nav-item" 
+            style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}
+            title="Open Shopping Cart"
+          >
+            <span className="nav-icon-wrap" style={{ position: 'relative' }}>
+              <i className="fa-solid fa-cart-shopping"></i>
+              {cartCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  right: '-8px',
+                  background: '#8b0000',
+                  color: 'white',
+                  fontSize: '0.62rem',
+                  fontWeight: 900,
+                  borderRadius: '50%',
+                  width: '16px',
+                  height: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                }}>
+                  {cartCount}
+                </span>
+              )}
+            </span>
+            <span className="nav-label">Cart</span>
+          </button>
+        )}
 
         <NavLink to="/contact" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
           <span className="nav-icon-wrap">

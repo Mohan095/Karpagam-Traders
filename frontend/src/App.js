@@ -9,38 +9,74 @@ import ContactForm from './components/ContactForm';
 import CartDrawer from './components/CartDrawer';
 import { auth, db, googleProvider } from './firebase';
 import Dashboard from './pages/Dashboard';
+import { NotificationTicker, NotificationSection } from './components/NotificationSection';
+import apiService from './api';
 
-// Default Products List (Total 24 Products: 8 Daily, 8 Monthly, 8 Specialty)
+// Default Products List using ONLY user assets images (Total 24 Products)
 const defaultProductsList = [
-  // Daily Products (8)
-  { id: 1, name: "Daily Calendar 1", price: 299, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Standard daily tear-off sheet calendar with auspicious Nalla Neram." },
-  { id: 2, name: "Daily Calendar 2", price: 399, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Deluxe daily calendar board print with spiritual artwork." },
-  { id: 3, name: "Daily Calendar 3", price: 249, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact daily Tamil calendar with vibrant typography." },
-  { id: 4, name: "Daily Calendar 4", price: 449, category: "daily", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Executive daily calendar sheet with gold foil binder header." },
-  { id: 5, name: "Daily Calendar 5", price: 199, category: "daily", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Traditional pocket size daily calendar for home & desk." },
-  { id: 6, name: "Daily Calendar 6", price: 349, category: "daily", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Religious temple daily tear-off calendar sheet." },
-  { id: 7, name: "Daily Calendar 7", price: 599, category: "daily", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Jumbo size daily calendar board with metal slider clip." },
-  { id: 8, name: "Daily Calendar 8", price: 229, category: "daily", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Classic Sivakasi printed tear-off calendar." },
+  // Daily Products (8) - using assets/daily 1 to 8
+  { id: 1, name: "Daily Calendar 1", price: 299, category: "daily", image: "/assets/daily 1.jpeg", description: "Standard daily tear-off sheet calendar with auspicious Nalla Neram." },
+  { id: 2, name: "Daily Calendar 2", price: 399, category: "daily", image: "/assets/daily 2.webp", description: "Deluxe daily calendar board print with spiritual artwork." },
+  { id: 3, name: "Daily Calendar 3", price: 249, category: "daily", image: "/assets/daily 3.webp", description: "Compact daily Tamil calendar with vibrant typography." },
+  { id: 4, name: "Daily Calendar 4", price: 449, category: "daily", image: "/assets/daily 4.webp", description: "Executive daily calendar sheet with gold foil binder header." },
+  { id: 5, name: "Daily Calendar 5", price: 199, category: "daily", image: "/assets/daily 5.jpg", description: "Traditional pocket size daily calendar for home & desk." },
+  { id: 6, name: "Daily Calendar 6", price: 349, category: "daily", image: "/assets/daily 6.webp", description: "Religious temple daily tear-off calendar sheet." },
+  { id: 7, name: "Daily Calendar 7", price: 599, category: "daily", image: "/assets/daily 7.webp", description: "Jumbo size daily calendar board with metal slider clip." },
+  { id: 8, name: "Daily Calendar 8", price: 229, category: "daily", image: "/assets/daily 8.jpg", description: "Classic Sivakasi printed tear-off calendar." },
 
-  // Monthly Products (8)
-  { id: 9, name: "Monthly Calendar 1", price: 499, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "12-Sheet Monthly wall calendar with high-gsm glossy paper." },
-  { id: 10, name: "Monthly Calendar 2", price: 599, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Landscape Monthly Tamil wall calendar with metallic tin rim." },
-  { id: 11, name: "Monthly Calendar 3", price: 449, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Corporate logo printed 12-page monthly wall sheet." },
-  { id: 12, name: "Monthly Calendar 4", price: 549, category: "monthly", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Double-sided monthly calendar with holiday highlighted list." },
-  { id: 13, name: "Monthly Calendar 5", price: 699, category: "monthly", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Royal Gold Edition monthly wall calendar 2027." },
-  { id: 14, name: "Monthly Calendar 6", price: 799, category: "monthly", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Custom photo monthly wall calendar with custom branding." },
-  { id: 15, name: "Monthly Calendar 7", price: 349, category: "monthly", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Compact 6-sheet monthly wall hanging calendar." },
-  { id: 16, name: "Monthly Calendar 8", price: 529, category: "monthly", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Traditional Tamil Panchangam monthly wall calendar." },
+  // Monthly Products (8) - using assets/monthly 1 to 8
+  { id: 9, name: "Monthly Calendar 1", price: 499, category: "monthly", image: "/assets/monthly 1.jpg", description: "12-Sheet Monthly wall calendar with high-gsm glossy paper." },
+  { id: 10, name: "Monthly Calendar 2", price: 599, category: "monthly", image: "/assets/monthly 2.webp", description: "Landscape Monthly Tamil wall calendar with metallic tin rim." },
+  { id: 11, name: "Monthly Calendar 3", price: 449, category: "monthly", image: "/assets/monthly 3.webp", description: "Corporate logo printed 12-page monthly wall sheet." },
+  { id: 12, name: "Monthly Calendar 4", price: 549, category: "monthly", image: "/assets/monthly 4.jpg", description: "Double-sided monthly calendar with holiday highlighted list." },
+  { id: 13, name: "Monthly Calendar 5", price: 699, category: "monthly", image: "/assets/monthly 5.jpg", description: "Royal Gold Edition monthly wall calendar 2027." },
+  { id: 14, name: "Monthly Calendar 6", price: 799, category: "monthly", image: "/assets/monthly 6.jpg", description: "Custom photo monthly wall calendar with custom branding." },
+  { id: 15, name: "Monthly Calendar 7", price: 349, category: "monthly", image: "/assets/monthly 7.webp", description: "Compact 6-sheet monthly wall hanging calendar." },
+  { id: 16, name: "Monthly Calendar 8", price: 529, category: "monthly", image: "/assets/monthly 8.webp", description: "Traditional Tamil Panchangam monthly wall calendar." },
 
-  // Cake & Specialty Products (8)
-  { id: 17, name: "Cake & Bakery Calendar 1", price: 650, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Specialty desk calendar designed for bakeries & cake shops." },
-  { id: 18, name: "Cake & Bakery Calendar 2", price: 750, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Triangular executive desk stand calendar with glossy varnish." },
-  { id: 19, name: "Specialty Calendar 3", price: 899, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Bespoke leatherette frame desk calendar with planner diary." },
-  { id: 20, name: "Specialty Calendar 4", price: 450, category: "specialty", image: "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=500&auto=format&fit=crop", description: "Miniature acrylic desk calendar for study tables." },
-  { id: 21, name: "Specialty Calendar 5", price: 950, category: "specialty", image: "https://images.unsplash.com/photo-1435527173128-983b87201f4d?w=500&auto=format&fit=crop", description: "Premium Gold embossed souvenir calendar & diary set." },
-  { id: 22, name: "Specialty Calendar 6", price: 320, category: "specialty", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=500&auto=format&fit=crop", description: "Eco-friendly recycled paper desk calendar." },
-  { id: 23, name: "Specialty Calendar 7", price: 480, category: "specialty", image: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=500&auto=format&fit=crop", description: "Magnetic fridge calendar sheet with tear-off memo pads." },
-  { id: 24, name: "Specialty Calendar 8", price: 390, category: "specialty", image: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop", description: "Pocket Tamil Panchangam calendar diary." }
+  // Cake & Specialty Products (8) - using assets/cake 1 to 8
+  { id: 17, name: "Cake & Bakery Calendar 1", price: 650, category: "specialty", image: "/assets/cake 1.jpg", description: "Specialty desk calendar designed for bakeries & cake shops." },
+  { id: 18, name: "Cake & Bakery Calendar 2", price: 750, category: "specialty", image: "/assets/cake 2.webp", description: "Triangular executive desk stand calendar with glossy varnish." },
+  { id: 19, name: "Specialty Calendar 3", price: 899, category: "specialty", image: "/assets/cake 3.jpg", description: "Bespoke leatherette frame desk calendar with planner diary." },
+  { id: 20, name: "Specialty Calendar 4", price: 450, category: "specialty", image: "/assets/cake 4.jpg", description: "Miniature acrylic desk calendar for study tables." },
+  { id: 21, name: "Specialty Calendar 5", price: 950, category: "specialty", image: "/assets/cake 5.jpg", description: "Premium Gold embossed souvenir calendar & diary set." },
+  { id: 22, name: "Specialty Calendar 6", price: 320, category: "specialty", image: "/assets/cake 6.jpg", description: "Eco-friendly recycled paper desk calendar." },
+  { id: 23, name: "Specialty Calendar 7", price: 480, category: "specialty", image: "/assets/cake 7.jpg", description: "Magnetic fridge calendar sheet with tear-off memo pads." },
+  { id: 24, name: "Specialty Calendar 8", price: 390, category: "specialty", image: "/assets/cake 8.jpg", description: "Pocket Tamil Panchangam calendar diary." }
+];
+
+// Initial Seed Notifications / Daily News
+const defaultNotificationsList = [
+  {
+    id: "notif_1",
+    title: "📢 2027 Tamil Daily & Monthly Calendar Bookings Now Open!",
+    content: "Karpagam Traders Sivakasi has officially commenced advance bookings for 2027 Daily Tear-off Calendars and 12-Sheet Monthly Wall Calendars. Book early for exclusive bulk discounts and custom corporate logo printing with fast shipping across Tamil Nadu & India.",
+    category: "Special Offer",
+    image: "/assets/daily 1.jpeg",
+    is_pinned: true,
+    is_active: true,
+    date: "2026-10-30"
+  },
+  {
+    id: "notif_2",
+    title: "✨ Royal Gold Edition 12-Sheet Wall Calendars Launched",
+    content: "Crafted on high-GSM art paper with UV spot varnish and elegant gold borders. Featuring accurate Tamil Panchangam, Nalla Neram, and festival lists.",
+    category: "New Arrival",
+    image: "/assets/monthly 1.jpg",
+    is_pinned: false,
+    is_active: true,
+    date: "2026-10-29"
+  },
+  {
+    id: "notif_3",
+    title: "🎂 Specialty Cake & Bakery Desk Stand Calendars Available",
+    content: "Modern triangular desk calendars designed specifically for bakeries, retail outlets, and corporate offices with custom food-grade cardstock.",
+    category: "Daily News",
+    image: "/assets/cake 1.jpg",
+    is_pinned: false,
+    is_active: true,
+    date: "2026-10-28"
+  }
 ];
 
 function App() {
@@ -93,6 +129,59 @@ function App() {
       console.warn("localStorage cart sync notice:", e);
     }
   }, [cart]);
+
+  // Notifications State synced with localStorage
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem('karpagam_notifications');
+      return saved ? JSON.parse(saved) : defaultNotificationsList;
+    } catch (e) {
+      return defaultNotificationsList;
+    }
+  });
+
+  // Sync notifications with localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('karpagam_notifications', JSON.stringify(notifications));
+    } catch (e) {
+      console.warn("localStorage notifications sync notice:", e);
+    }
+  }, [notifications]);
+
+  const handleAddNotification = async (newNotif) => {
+    setNotifications(prev => [newNotif, ...prev]);
+    if (db) {
+      try {
+        await db.collection("notifications").add(newNotif);
+      } catch (e) {
+        console.warn("Firestore notification add warning:", e);
+      }
+    }
+    try {
+      await apiService.createNotification(newNotif);
+    } catch (e) {}
+  };
+
+  const handleDeleteNotification = async (notifId) => {
+    setNotifications(prev => prev.filter(n => n.id !== notifId));
+    if (db) {
+      try {
+        await db.collection("notifications").doc(notifId).delete();
+      } catch (e) {}
+    }
+    try {
+      await apiService.deleteNotification(notifId);
+    } catch (e) {}
+  };
+
+  const handleTogglePinNotification = (notifId) => {
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_pinned: !n.is_pinned } : n));
+  };
+
+  const handleToggleActiveNotification = (notifId) => {
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_active: !n.is_active } : n));
+  };
 
   // Product actions synced with Firebase Firestore
   const handleAddProduct = async (newProd) => {
@@ -273,8 +362,37 @@ function App() {
               firestoreProds.push(doc.data());
             });
             if (firestoreProds.length > 0) {
-              setProducts(firestoreProds);
+              // Ensure ONLY user asset images are used, never Unsplash
+              const sanitizedProds = firestoreProds.map(p => {
+                if (!p.image || p.image.includes('unsplash.com')) {
+                  const match = defaultProductsList.find(dp => dp.id === p.id);
+                  return match ? { ...p, image: match.image } : { ...p, image: '/assets/daily 1.jpeg' };
+                }
+                return p;
+              });
+              setProducts(sanitizedProds);
             }
+          }
+
+          // A2. Seed & Load Notifications Collection
+          try {
+            const notifSnap = await db.collection("notifications").get();
+            if (notifSnap.empty) {
+              console.log("React: Seeding default notifications to Firebase Firestore...");
+              for (const n of defaultNotificationsList) {
+                await db.collection("notifications").doc(n.id).set(n);
+              }
+            } else {
+              const loadedNotifs = [];
+              notifSnap.forEach(doc => {
+                loadedNotifs.push({ id: doc.id, ...doc.data() });
+              });
+              if (loadedNotifs.length > 0) {
+                setNotifications(loadedNotifs);
+              }
+            }
+          } catch (nErr) {
+            console.warn("Notifications Firestore sync warning:", nErr.message);
           }
 
           // B. Seed Customer Inquiries Collection if empty
@@ -680,6 +798,7 @@ function App() {
   );
 
   const isAdminPage = location.pathname === '/admin';
+  const isHomePage = location.pathname === '/';
 
   return (
     <div>
@@ -713,11 +832,23 @@ function App() {
         </div>
       )}
 
+      {/* 2.5 Top Live Announcement Ticker */}
+      {!isAdminPage && (
+        <NotificationTicker 
+          notifications={notifications}
+          onSelectNotification={() => {
+            const el = document.getElementById('notifications-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
+      )}
+
       {/* 3. Navigation Header */}
       {!isAdminPage && (
         <Navbar
           user={user}
           cartCount={cart.length}
+          notifications={notifications}
           onOpenCart={() => setIsCartOpen(true)}
           onLogout={handleLogout}
           onOpenAuth={() => {
@@ -737,6 +868,9 @@ function App() {
           <>
             <Hero />
             
+            {/* Dedicated Daily News & Notifications Feed on Home Page */}
+            <NotificationSection notifications={notifications} />
+
             {/* Quick Banner Callout */}
             <section style={{ padding: '60px 5%', textAlign: 'center', background: 'rgba(255,255,255,0.6)' }}>
               <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -834,6 +968,11 @@ function App() {
           user && (user.email?.toLowerCase() === 'mohantn617@gmail.com' || user.role === 'admin') ? (
             <Dashboard 
               products={products}
+              notifications={notifications}
+              onAddNotification={handleAddNotification}
+              onDeleteNotification={handleDeleteNotification}
+              onTogglePinNotification={handleTogglePinNotification}
+              onToggleActiveNotification={handleToggleActiveNotification}
               onAddProduct={handleAddProduct}
               onDeleteProduct={handleDeleteProduct}
               onUpdateProductPrice={handleUpdateProductPrice}
@@ -950,6 +1089,50 @@ function App() {
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
                 </svg>
                 <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>Continue with Google</span>
+              </button>
+
+              <div style={{ margin: '18px 0 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Administrator</span>
+                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+              </div>
+
+              {/* Direct Administrator Access Button */}
+              <button 
+                type="button" 
+                onClick={() => {
+                  const adminUser = {
+                    id: 'admin_mohantn617',
+                    name: 'Mohan K',
+                    email: 'mohantn617@gmail.com',
+                    photoURL: '/logo.png',
+                    role: 'admin'
+                  };
+                  setUser(adminUser);
+                  setAuthModalOpen(false);
+                  showAlert('Logged in as Administrator (Mohan K). Welcome back!', 'success');
+                  navigate('/admin');
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '12px 20px',
+                  borderRadius: '50px',
+                  border: '1.5px solid #8b0000',
+                  background: 'rgba(139, 0, 0, 0.04)',
+                  color: '#8b0000',
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#8b0000'; e.currentTarget.style.color = 'white'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(139, 0, 0, 0.04)'; e.currentTarget.style.color = '#8b0000'; }}
+              >
+                <i className="fa-solid fa-user-shield"></i> Direct Admin Access (Mohan K)
               </button>
             </div>
           </div>
@@ -1367,8 +1550,8 @@ function App() {
         user={user}
       />
 
-      {/* Global Floating Cart Pill Button (accessible on all pages when cart has items) */}
-      {!isAdminPage && cart.length > 0 && !isCartOpen && (
+      {/* Global Floating Cart Pill Button (accessible on shop/showcase/contact when cart has items, HIDDEN on Home page) */}
+      {!isAdminPage && !isHomePage && cart.length > 0 && !isCartOpen && (
         <button
           className="global-floating-cart-pill"
           onClick={() => setIsCartOpen(true)}

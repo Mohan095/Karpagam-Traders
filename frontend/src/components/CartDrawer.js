@@ -109,6 +109,34 @@ function CartDrawer({
       console.warn("FastAPI backend order logging notice:", err);
     }
 
+    // 2.5 Always save Order inquiry to localStorage so Admin sees it immediately
+    try {
+      const existingInquiries = JSON.parse(localStorage.getItem('karpagam_customer_inquiries') || '[]');
+      const now = new Date();
+      const timestampStr = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0') + ':' +
+        String(now.getSeconds()).padStart(2, '0');
+
+      existingInquiries.unshift({
+        id: 'order_' + Date.now(),
+        name: orderPayload.name,
+        phone: orderPayload.phone,
+        email: orderPayload.email,
+        service: orderPayload.service,
+        message: orderPayload.message,
+        timestamp: timestampStr,
+        date: timestampStr,
+        status: "Order via WhatsApp",
+        totalAmount: cartTotal
+      });
+      localStorage.setItem('karpagam_customer_inquiries', JSON.stringify(existingInquiries));
+    } catch (lsErr) {
+      console.warn("LocalStorage order backup error:", lsErr);
+    }
+
     // 3. Save Order to Firebase Firestore if connected
     if (db) {
       try {
@@ -217,7 +245,7 @@ function CartDrawer({
                       className="cart-item-img"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop';
+                        e.target.src = '/assets/daily 1.jpeg';
                       }}
                     />
                     <div className="cart-item-info" style={{ flex: 1, minWidth: 0 }}>
