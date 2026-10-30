@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
+import { downloadBillingImage } from '../utils/billGenerator';
 
 function CartDrawer({
   isOpen,
@@ -67,6 +68,47 @@ function CartDrawer({
 
     setIsSubmitting(true);
 
+    const invoiceId = 'KT-INV-' + Math.floor(100000 + Math.random() * 900000);
+    const now = new Date();
+    const timestampStr = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0') + ' ' +
+      String(now.getHours()).padStart(2, '0') + ':' +
+      String(now.getMinutes()).padStart(2, '0') + ':' +
+      String(now.getSeconds()).padStart(2, '0');
+
+    const billItems = cart.map(item => ({
+      name: item.name,
+      qty: item.quantity || 1,
+      price: item.price,
+      size: item.size || 'Standard',
+      quality: item.quality || 'Premium'
+    }));
+
+    const orderRecord = {
+      id: invoiceId,
+      invoiceNo: invoiceId,
+      customerName: payName.trim(),
+      name: payName.trim(),
+      phone: payMobile.trim(),
+      email: payEmail.trim() || 'N/A',
+      address: payAddress.trim(),
+      items: billItems,
+      total: cartTotal,
+      totalAmount: cartTotal,
+      timestamp: timestampStr,
+      date: timestampStr,
+      status: "Order via WhatsApp",
+      method: "WhatsApp Express Order"
+    };
+
+    // 1. AUTO-DOWNLOAD Black & White Billing Image (PNG) for User
+    try {
+      downloadBillingImage(orderRecord, 'png');
+    } catch (billErr) {
+      console.warn("Auto-download bill notice:", billErr);
+    }
+
     const itemsSummary = cart.map(item => {
       const qty = item.quantity || 1;
       return `• *${item.name}* (${item.quality || 'Standard'}, ${item.size || 'A3'}) x ${qty} = ₹${item.price * qty}`;
@@ -75,6 +117,7 @@ function CartDrawer({
     const waMessage = 
       `*NEW CALENDAR ORDER - KARPAGAM TRADERS*\n` +
       `----------------------------------------\n` +
+      `🧾 *Bill / Invoice No:* ${invoiceId}\n` +
       `👤 *Customer Name:* ${payName.trim()}\n` +
       `📱 *Mobile:* ${payMobile.trim()}\n` +
       `📧 *Email:* ${payEmail.trim() || 'N/A'}\n` +
@@ -84,9 +127,10 @@ function CartDrawer({
       `----------------------------------------\n` +
       `💰 *Total Amount:* ₹${cartTotal}\n` +
       `----------------------------------------\n` +
+      `📄 Official Black & White Order Bill has been downloaded.\n` +
       `Please confirm my order and share payment/dispatch details. Thank you!`;
 
-    // 1. Open WhatsApp with prefilled message
+    // 2. Open WhatsApp with prefilled message
     const whatsappUrl = `https://wa.me/919566801402?text=${encodeURIComponent(waMessage)}`;
     window.open(whatsappUrl, '_blank');
 
@@ -95,10 +139,10 @@ function CartDrawer({
       phone: payMobile.trim(),
       email: payEmail.trim() || '',
       service: `Shop Order (${totalItemCount} Items - ₹${cartTotal})`,
-      message: `Items:\n${itemsSummary}\nDelivery Address: ${payAddress.trim()}`
+      message: `Invoice: ${invoiceId}\nItems:\n${itemsSummary}\nDelivery Address: ${payAddress.trim()}`
     };
 
-    // 2. Log Order to FastAPI backend
+    // 3. Log Order to FastAPI backend
     try {
       await fetch('http://127.0.0.1:8000/order', {
         method: 'POST',
@@ -109,24 +153,28 @@ function CartDrawer({
       console.warn("FastAPI backend order logging notice:", err);
     }
 
-    // 2.5 Always save Order inquiry to localStorage so Admin sees it immediately
+    // 4. Save to LocalStorage Billing Records for Admin/Owner and User History
+    try {
+      const existingBills = JSON.parse(localStorage.getItem('karpagam_billing_records') || '[]');
+      existingBills.unshift(orderRecord);
+      localStorage.setItem('karpagam_billing_records', JSON.stringify(existingBills));
+    } catch (billLsErr) {
+      console.warn("LocalStorage bill save notice:", billLsErr);
+    }
+
+    // 4.5 Save Order inquiry to localStorage so Admin sees it immediately in Inquiries tab
     try {
       const existingInquiries = JSON.parse(localStorage.getItem('karpagam_customer_inquiries') || '[]');
-      const now = new Date();
-      const timestampStr = now.getFullYear() + '-' +
-        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-        String(now.getDate()).padStart(2, '0') + ' ' +
-        String(now.getHours()).padStart(2, '0') + ':' +
-        String(now.getMinutes()).padStart(2, '0') + ':' +
-        String(now.getSeconds()).padStart(2, '0');
-
       existingInquiries.unshift({
-        id: 'order_' + Date.now(),
-        name: orderPayload.name,
-        phone: orderPayload.phone,
-        email: orderPayload.email,
+        id: invoiceId,
+        invoiceNo: invoiceId,
+        name: orderRecord.customerName,
+        phone: orderRecord.phone,
+        email: orderRecord.email,
+        address: orderRecord.address,
         service: orderPayload.service,
         message: orderPayload.message,
+        items: billItems,
         timestamp: timestampStr,
         date: timestampStr,
         status: "Order via WhatsApp",
@@ -137,23 +185,20 @@ function CartDrawer({
       console.warn("LocalStorage order backup error:", lsErr);
     }
 
-    // 3. Save Order to Firebase Firestore if connected
+    // 5. Save Order & Billing Record to Firebase Firestore if connected
     if (db) {
       try {
-        const now = new Date();
-        const timestampStr = now.getFullYear() + '-' +
-          String(now.getMonth() + 1).padStart(2, '0') + '-' +
-          String(now.getDate()).padStart(2, '0') + ' ' +
-          String(now.getHours()).padStart(2, '0') + ':' +
-          String(now.getMinutes()).padStart(2, '0') + ':' +
-          String(now.getSeconds()).padStart(2, '0');
+        await db.collection("billing_records").doc(invoiceId).set(orderRecord);
 
         await db.collection("customer_inquiries").add({
-          name: orderPayload.name,
-          phone: orderPayload.phone,
-          email: orderPayload.email,
+          invoiceNo: invoiceId,
+          name: orderRecord.customerName,
+          phone: orderRecord.phone,
+          email: orderRecord.email,
+          address: orderRecord.address,
           service: orderPayload.service,
           message: orderPayload.message,
+          items: billItems,
           timestamp: timestampStr,
           date: timestampStr,
           status: "Order via WhatsApp",
@@ -162,7 +207,7 @@ function CartDrawer({
 
         await db.collection("history").add({
           email: orderPayload.email || orderPayload.name,
-          event: `Placed Shop Order via WhatsApp (₹${cartTotal})`,
+          event: `Placed Shop Order via WhatsApp (${invoiceId} - ₹${cartTotal})`,
           activity: `Placed Shop Order (${totalItemCount} items, ₹${cartTotal}) by ${orderPayload.name}`,
           user: orderPayload.name,
           timestamp: timestampStr,
@@ -177,7 +222,7 @@ function CartDrawer({
     if (onClearCart) onClearCart();
     setPaymentModalOpen(false);
     onClose();
-    if (showAlert) showAlert("Order details sent via WhatsApp! Thank you for ordering from Karpagam Traders.", "success");
+    if (showAlert) showAlert("Order submitted! WhatsApp opened & your Black & White Bill (PNG) has been automatically downloaded.", "success");
   };
 
   const handleBrowseShop = () => {
@@ -522,8 +567,12 @@ function CartDrawer({
                   }}
                 >
                   <i className="fa-brands fa-whatsapp" style={{ fontSize: '1.4rem' }}></i> 
-                  {isSubmitting ? 'Placing Order...' : `Send Order via WhatsApp (₹${cartTotal})`}
+                  {isSubmitting ? 'Generating Bill & Placing Order...' : `Send Order via WhatsApp (₹${cartTotal})`}
                 </button>
+                <div style={{ gridColumn: 'span 2', textAlign: 'center', fontSize: '0.78rem', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <i className="fa-solid fa-circle-down" style={{ color: '#000000' }}></i>
+                  <span>Official Black & White Bill (PNG) automatically downloads upon ordering</span>
+                </div>
               </form>
             </div>
           </div>

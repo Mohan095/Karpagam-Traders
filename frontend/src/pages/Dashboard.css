@@ -769,6 +769,122 @@ html, body {
   background: #fca5a5;
 }
 
+/* BILLING CONTROLS & ACTION BUTTONS */
+.btn-autodownload-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1.5px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-autodownload-toggle.active {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.btn-download-latest {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-download-latest:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+
+.billing-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.bill-card-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.bill-card-btn.primary {
+  background: #000000;
+  color: #ffffff;
+}
+
+.bill-card-btn.primary:hover {
+  background: #27272a;
+  transform: translateY(-1px);
+}
+
+.bill-card-btn.secondary {
+  background: #334155;
+  color: #ffffff;
+}
+
+.bill-card-btn.secondary:hover {
+  background: #475569;
+  transform: translateY(-1px);
+}
+
+.bill-card-btn.preview {
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+}
+
+.bill-card-btn.preview:hover {
+  background: #e2e8f0;
+}
+
+.action-btn-bill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn-bill:hover {
+  background: #27272a;
+  transform: translateY(-1px);
+}
+
 /* Custom Table Action Delete Icon Button */
 .delete-btn-icon {
   background: transparent;

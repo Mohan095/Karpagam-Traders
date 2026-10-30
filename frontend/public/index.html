@@ -46,6 +46,34 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
+  <!-- Security: Disable F12 and inspect shortcuts globally -->
+  <script>
+    (function() {
+      function blockDevTools(e) {
+        // Block F12 (key or keyCode 123)
+        if (e.key === 'F12' || e.keyCode === 123 || e.which === 123) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+        // Block Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+        // Block Ctrl+U (view source)
+        if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }
+      window.addEventListener('keydown', blockDevTools, true);
+      document.addEventListener('keydown', blockDevTools, true);
+    })();
+  </script>
+
   <!-- Hide default right-side vertical scrollbar while preserving smooth scrolling -->
   <style>
     html, body, #root, * {

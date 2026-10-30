@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import apiService from '../api';
+import { downloadBillingImage, generateBillingImageDataUrl } from '../utils/billGenerator';
 import './Dashboard.css';
 
 const ASSET_PRESETS = [
@@ -38,6 +39,10 @@ function Dashboard({
   const [registeredUsers, setRegisteredUsers] = useState([]);
   const [billingRecords, setBillingRecords] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [previewBillModal, setPreviewBillModal] = useState({ open: false, order: null, dataUrl: null });
+  const [autoDownloadEnabled, setAutoDownloadEnabled] = useState(() => {
+    return localStorage.getItem('karpagam_admin_autodownload') === 'true';
+  });
 
   // New Product Form State
   const [newProdName, setNewProdName] = useState('');
@@ -161,7 +166,93 @@ function Dashboard({
       console.warn("Firestore fetch error, falling back to local records:", err.message);
     }
 
-    setBillingRecords([]);
+    // Fetch Billing Records from Firestore and localStorage
+    let bList = [];
+    if (db) {
+      try {
+        const billsSnap = await db.collection("billing_records").get();
+        billsSnap.forEach(docSnap => {
+          bList.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      } catch (bErr) {
+        console.warn("Firestore billing records notice:", bErr);
+      }
+    }
+    try {
+      const localBills = JSON.parse(localStorage.getItem('karpagam_billing_records') || '[]');
+      localBills.forEach(lb => {
+        if (!bList.some(b => b.id === lb.id || (b.customerName === lb.customerName && b.timestamp === lb.timestamp))) {
+          bList.push(lb);
+        }
+      });
+    } catch (lsbErr) {
+      console.warn("LocalStorage bills read warning:", lsbErr);
+    }
+
+    // Default sample billing records if none exist yet
+    if (bList.length === 0) {
+      bList = [
+        {
+          id: 'KT-INV-821940',
+          invoiceNo: 'KT-INV-821940',
+          customerName: 'Murugan Traders Sivakasi',
+          phone: '+91 94432 10987',
+          email: 'murugan.sivakasi@gmail.com',
+          address: 'Shop #14, Gandhi Road, Sivakasi - 626123',
+          items: [
+            { name: 'Daily Tamil Calendar 2027 (Deluxe)', qty: 50, price: 120, size: 'A4', quality: 'Deluxe' },
+            { name: 'Monthly Wall Sheet Calendar (Glossy 6-Sheet)', qty: 25, price: 80, size: 'A3', quality: 'Glossy' }
+          ],
+          total: 8000,
+          totalAmount: 8000,
+          timestamp: '2026-10-30 14:20:00',
+          date: '2026-10-30 14:20:00',
+          status: 'Order via WhatsApp',
+          method: 'WhatsApp Express Order'
+        },
+        {
+          id: 'KT-INV-619420',
+          invoiceNo: 'KT-INV-619420',
+          customerName: 'Sri Meenakshi Stores',
+          phone: '+91 98765 43210',
+          email: 'meenakshistores@gmail.com',
+          address: '42, West Car Street, Madurai - 625001',
+          items: [
+            { name: 'Executive Desktop Table Calendar 2027', qty: 15, price: 199, size: 'Desk Stand', quality: 'Executive Matte' }
+          ],
+          total: 2985,
+          totalAmount: 2985,
+          timestamp: '2026-10-29 11:15:00',
+          date: '2026-10-29 11:15:00',
+          status: 'Order via WhatsApp',
+          method: 'WhatsApp Express Order'
+        }
+      ];
+      try {
+        localStorage.setItem('karpagam_billing_records', JSON.stringify(bList));
+      } catch (e) {}
+    }
+
+    bList.sort((a, b) => (b.timestamp || b.date || '').localeCompare(a.timestamp || a.date || ''));
+    setBillingRecords(bList);
+
+    // Auto-download for Owner/Admin if enabled
+    const autoDl = localStorage.getItem('karpagam_admin_autodownload') === 'true';
+    if (autoDl && bList.length > 0) {
+      try {
+        const downloadedIds = JSON.parse(localStorage.getItem('karpagam_admin_downloaded_bills') || '[]');
+        bList.forEach(order => {
+          if (order.id && !downloadedIds.includes(order.id)) {
+            downloadBillingImage(order, 'png');
+            downloadedIds.push(order.id);
+          }
+        });
+        localStorage.setItem('karpagam_admin_downloaded_bills', JSON.stringify(downloadedIds));
+      } catch (adlErr) {
+        console.warn("Owner auto-download notice:", adlErr);
+      }
+    }
+
     setLoading(false);
   };
 
@@ -314,9 +405,89 @@ function Dashboard({
     } catch (e) {}
   };
 
+  const handleDownloadBill = (order, format = 'png') => {
+    const res = downloadBillingImage(order, format);
+    if (res && res.success) {
+      alert(`Black & White Bill (${format.toUpperCase()}) downloaded for ${order.customerName || order.name || 'Order'}!`);
+    }
+  };
+
+  const handleDownloadInquiryBill = (m) => {
+    const orderData = {
+      id: m.invoiceNo || (m.id && String(m.id).startsWith('order_') ? ('KT-INV-' + String(m.id).replace('order_', '').slice(-6)) : (m.id || 'KT-INV-' + Date.now().toString().slice(-6))),
+      invoiceNo: m.invoiceNo || (m.id && String(m.id).startsWith('order_') ? ('KT-INV-' + String(m.id).replace('order_', '').slice(-6)) : (m.id || 'KT-INV-' + Date.now().toString().slice(-6))),
+      customerName: m.name || 'Valued Customer',
+      name: m.name || 'Valued Customer',
+      phone: m.phone || 'N/A',
+      email: m.email || 'N/A',
+      address: m.address || (m.message && m.message.includes('Delivery Address:') ? m.message.split('Delivery Address:')[1]?.trim() : 'Sivakasi Counter Delivery'),
+      items: (m.items && m.items.length > 0) ? m.items : [{ name: m.service || 'Calendar Printing Order', qty: 1, price: m.totalAmount || 0 }],
+      total: m.totalAmount || 0,
+      totalAmount: m.totalAmount || 0,
+      timestamp: m.timestamp || m.date || new Date().toISOString().split('T')[0],
+      date: m.date || m.timestamp || new Date().toISOString().split('T')[0],
+      status: m.status || 'Order via WhatsApp',
+      method: 'WhatsApp Express Order'
+    };
+    downloadBillingImage(orderData, 'png');
+    alert(`Black & White Bill (PNG) downloaded for ${orderData.customerName}!`);
+  };
+
+  const handlePreviewBill = (order) => {
+    const dataUrl = generateBillingImageDataUrl(order, 'png');
+    setPreviewBillModal({ open: true, order, dataUrl });
+  };
+
+  const handleToggleAutoDownload = () => {
+    const nextVal = !autoDownloadEnabled;
+    setAutoDownloadEnabled(nextVal);
+    localStorage.setItem('karpagam_admin_autodownload', String(nextVal));
+    if (nextVal) {
+      alert("Owner Auto-Download is now ENABLED! Incoming orders will automatically download as Black & White bills.");
+    } else {
+      alert("Owner Auto-Download is now DISABLED.");
+    }
+  };
+
+  const handleDownloadLatestBill = () => {
+    if (billingRecords.length === 0) {
+      alert("No billing records available to download.");
+      return;
+    }
+    downloadBillingImage(billingRecords[0], 'png');
+    alert(`Downloaded latest Black & White Bill for ${billingRecords[0].customerName || 'Order'}!`);
+  };
+
+  const handlePrintBill = (dataUrl) => {
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Bill - Karpagam Traders</title>
+          <style>
+            @page { margin: 10mm; }
+            body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background: #fff; }
+            img { max-width: 100%; height: auto; }
+          </style>
+        </head>
+        <body onload="window.print(); setTimeout(function(){ window.close(); }, 500);">
+          <img src="${dataUrl}" alt="Invoice" />
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
   const handleClearBillingHistory = () => {
     if (window.confirm("Are you sure you want to clear all payment and billing history?")) {
       setBillingRecords([]);
+      localStorage.removeItem('karpagam_billing_records');
+      localStorage.removeItem('karpagam_admin_downloaded_bills');
     }
   };
 
@@ -1050,40 +1221,100 @@ function Dashboard({
             {/* TAB 5: BILLING */}
             {activeTab === 'billing' && (
               <div className="workspace-content-card">
-                <div className="content-card-header">
-                  <h3>Payment & Billing History</h3>
-                  <button onClick={handleClearBillingHistory} className="btn-clear-billing">
-                    <i className="fa-solid fa-trash-can"></i> Clear All Records
-                  </button>
+                <div className="content-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>Payment & Billing Records ({billingRecords.length})</h3>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                      Official Black & White (PNG / JPG) billing format for shop owner records and customer receipts
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button 
+                      type="button"
+                      onClick={handleToggleAutoDownload} 
+                      className={`btn-autodownload-toggle ${autoDownloadEnabled ? 'active' : ''}`}
+                      title="Automatically download bills when new orders arrive"
+                    >
+                      <i className={`fa-solid ${autoDownloadEnabled ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
+                      <span>Auto-Download: {autoDownloadEnabled ? 'ON' : 'OFF'}</span>
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={handleDownloadLatestBill} 
+                      className="btn-download-latest"
+                      title="Download the latest received bill"
+                    >
+                      <i className="fa-solid fa-file-arrow-down"></i>
+                      <span>Download Latest Bill</span>
+                    </button>
+
+                    <button type="button" onClick={handleClearBillingHistory} className="btn-clear-billing">
+                      <i className="fa-solid fa-trash-can"></i> Clear All
+                    </button>
+                  </div>
                 </div>
 
                 <div className="billing-cards-grid">
                   {billingRecords.map((b) => (
                     <div key={b.id} className="billing-card">
                       <div className="billing-card-header">
-                        <span className="billing-inv-id">{b.id}</span>
-                        <span className={`status-pill ${b.status.toLowerCase()}`}>{b.status}</span>
+                        <div>
+                          <span className="billing-inv-id">{b.id || b.invoiceNo}</span>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>{b.timestamp || b.date}</div>
+                        </div>
+                        <span className={`status-pill ${(b.status || 'pending').toLowerCase().replace(/\s+/g, '-')}`}>{b.status || 'Order via WhatsApp'}</span>
                       </div>
 
                       <div className="billing-card-body">
-                        <h4>{b.customerName}</h4>
-                        <p className="phone-line"><i className="fa-solid fa-phone"></i> {b.phone}</p>
-                        <p className="address-box"><i className="fa-solid fa-location-dot"></i> {b.address}</p>
+                        <h4>{b.customerName || b.name || 'Valued Customer'}</h4>
+                        <p className="phone-line"><i className="fa-solid fa-phone"></i> {b.phone || 'N/A'}</p>
+                        {b.email && b.email !== 'N/A' && <p className="phone-line"><i className="fa-solid fa-envelope"></i> {b.email}</p>}
+                        <p className="address-box"><i className="fa-solid fa-location-dot"></i> {b.address || 'Direct Shop Dispatch'}</p>
 
                         <div className="billing-items-list">
-                          <h5>Ordered Items:</h5>
-                          {b.items.map((it, idx) => (
+                          <h5>Ordered Items ({b.items?.length || 1}):</h5>
+                          {(b.items || []).map((it, idx) => (
                             <div key={idx} className="item-line">
-                              <span>{it.name} (x{it.qty})</span>
-                              <strong>₹{it.price * it.qty}</strong>
+                              <span>{it.name} (x{it.qty || it.quantity || 1})</span>
+                              <strong>₹{(Number(it.price || 0) * Number(it.qty || it.quantity || 1)).toFixed(2)}</strong>
                             </div>
                           ))}
                         </div>
                       </div>
 
                       <div className="billing-card-footer">
-                        <span>Payment Method: {b.method}</span>
-                        <div className="total-amount">Total: ₹{b.total}</div>
+                        <span>Method: {b.method || 'WhatsApp Express'}</span>
+                        <div className="total-amount">Total: ₹{b.total || b.totalAmount || 0}</div>
+                      </div>
+
+                      {/* Black & White Bill Download & View Controls for Owner */}
+                      <div className="billing-card-actions">
+                        <button 
+                          type="button"
+                          onClick={() => handleDownloadBill(b, 'png')}
+                          className="bill-card-btn primary"
+                          title="Download Black & White Bill (PNG)"
+                        >
+                          <i className="fa-solid fa-download"></i> PNG Bill
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handleDownloadBill(b, 'jpg')}
+                          className="bill-card-btn secondary"
+                          title="Download Black & White Bill (JPG)"
+                        >
+                          <i className="fa-solid fa-file-image"></i> JPG Bill
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => handlePreviewBill(b)}
+                          className="bill-card-btn preview"
+                          title="Preview Black & White Receipt"
+                        >
+                          <i className="fa-solid fa-eye"></i> View Bill
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1152,6 +1383,14 @@ function Dashboard({
                           <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{m.timestamp || m.date || 'Today'}</td>
                           <td>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <button 
+                                type="button"
+                                onClick={() => handleDownloadInquiryBill(m)}
+                                className="action-btn-bill"
+                                title="Download Black & White Bill (PNG)"
+                              >
+                                <i className="fa-solid fa-file-invoice"></i> Bill (PNG)
+                              </button>
                               {m.phone && (
                                 <a 
                                   href={`https://wa.me/91${m.phone.replace(/[^0-9]/g, '').slice(-10)}?text=${encodeURIComponent(`Hello ${m.name || 'Customer'},\nThank you for reaching out to Karpagam Traders regarding "${m.service || 'Calendar Printing'}". How can we assist you with your requirements today?`)}`}
@@ -1230,6 +1469,70 @@ function Dashboard({
           </>
         )}
       </main>
+
+      {/* Black & White Bill Preview Modal for Owner / Admin */}
+      {previewBillModal.open && (
+        <div className="auth-overlay open" onClick={(e) => e.target.classList.contains('auth-overlay') && setPreviewBillModal({ open: false, order: null, dataUrl: null })}>
+          <div className="bill-modal-card" style={{ maxWidth: '850px', width: '95%', maxHeight: '92vh', overflowY: 'auto', background: '#ffffff', borderRadius: '20px', padding: '24px', boxShadow: '0 25px 60px rgba(0,0,0,0.35)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa-solid fa-file-invoice" style={{ color: '#000000' }}></i>
+                  Black & White Billing Format
+                </h3>
+                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                  Invoice: {previewBillModal.order?.id || previewBillModal.order?.invoiceNo} • Customer: {previewBillModal.order?.customerName || previewBillModal.order?.name}
+                </span>
+              </div>
+              <button 
+                onClick={() => setPreviewBillModal({ open: false, order: null, dataUrl: null })}
+                style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div style={{ textAlign: 'center', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto' }}>
+              <img 
+                src={previewBillModal.dataUrl} 
+                alt="Official Black and White Bill" 
+                style={{ maxWidth: '100%', height: 'auto', boxShadow: '0 8px 25px rgba(0,0,0,0.12)', border: '2px solid #000000' }} 
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
+              <button 
+                type="button"
+                onClick={() => handleDownloadBill(previewBillModal.order, 'png')}
+                style={{ background: '#000000', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <i className="fa-solid fa-download"></i> Download PNG
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleDownloadBill(previewBillModal.order, 'jpg')}
+                style={{ background: '#334155', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <i className="fa-solid fa-file-image"></i> Download JPG
+              </button>
+              <button 
+                type="button"
+                onClick={() => handlePrintBill(previewBillModal.dataUrl)}
+                style={{ background: '#e2e8f0', color: '#1e293b', border: 'none', borderRadius: '10px', padding: '10px 18px', fontWeight: 800, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <i className="fa-solid fa-print"></i> Print Bill
+              </button>
+              <button 
+                type="button"
+                onClick={() => setPreviewBillModal({ open: false, order: null, dataUrl: null })}
+                style={{ background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '10px', padding: '10px 18px', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. Fixed Mobile Bottom Admin Navigation Bar */}
       <div className="mobile-admin-bottom-navbar">

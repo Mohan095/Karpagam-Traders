@@ -499,11 +499,17 @@ function App() {
 
     // Block keyboard shortcuts
     const handleKeyDown = (e) => {
-      if (e.ctrlKey && e.key === 'u') e.preventDefault();
-      if (e.ctrlKey && e.key === 's') e.preventDefault();
-      if (e.ctrlKey && e.shiftKey && e.key === 'I') e.preventDefault();
-      if (e.ctrlKey && e.shiftKey && e.key === 'J') e.preventDefault();
-      if (e.ctrlKey && e.shiftKey && e.key === 'C') e.preventDefault();
+      // Disable F12 Developer Tools
+      if (e.key === 'F12' || e.keyCode === 123 || e.which === 123) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+      if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) e.preventDefault();
+      if (e.ctrlKey && (e.key === 's' || e.key === 'S')) e.preventDefault();
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) e.preventDefault();
+      if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) e.preventDefault();
+      if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) e.preventDefault();
     };
     document.addEventListener('keydown', handleKeyDown);
 
@@ -1089,50 +1095,6 @@ function App() {
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
                 </svg>
                 <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>Continue with Google</span>
-              </button>
-
-              <div style={{ margin: '18px 0 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Administrator</span>
-                <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
-              </div>
-
-              {/* Direct Administrator Access Button */}
-              <button 
-                type="button" 
-                onClick={() => {
-                  const adminUser = {
-                    id: 'admin_mohantn617',
-                    name: 'Mohan K',
-                    email: 'mohantn617@gmail.com',
-                    photoURL: '/logo.png',
-                    role: 'admin'
-                  };
-                  setUser(adminUser);
-                  setAuthModalOpen(false);
-                  showAlert('Logged in as Administrator (Mohan K). Welcome back!', 'success');
-                  navigate('/admin');
-                }}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '12px 20px',
-                  borderRadius: '50px',
-                  border: '1.5px solid #8b0000',
-                  background: 'rgba(139, 0, 0, 0.04)',
-                  color: '#8b0000',
-                  fontWeight: 800,
-                  fontSize: '0.92rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#8b0000'; e.currentTarget.style.color = 'white'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(139, 0, 0, 0.04)'; e.currentTarget.style.color = '#8b0000'; }}
-              >
-                <i className="fa-solid fa-user-shield"></i> Direct Admin Access (Mohan K)
               </button>
             </div>
           </div>
