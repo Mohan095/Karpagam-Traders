@@ -12,16 +12,18 @@ export function NotificationTicker({ notifications = [], onSelectNotification })
     <div className="announcement-top-bar" style={{
       background: 'linear-gradient(90deg, #700000 0%, #8B0000 50%, #9b111e 100%)',
       color: '#ffffff',
-      padding: '10px 16px',
-      fontSize: '0.88rem',
+      padding: '9px 16px',
+      fontSize: '0.86rem',
       fontWeight: 600,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       position: 'relative',
-      zIndex: 99,
-      boxShadow: '0 2px 10px rgba(139,0,0,0.25)',
-      borderBottom: '1px solid rgba(255,215,0,0.3)'
+      zIndex: 1002,
+      width: '100%',
+      boxSizing: 'border-box',
+      boxShadow: '0 2px 10px rgba(139,0,0,0.3)',
+      borderBottom: '1px solid rgba(255,215,0,0.35)'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden', flex: 1 }}>
         <span style={{
@@ -361,7 +363,8 @@ export function NotificationSection({ notifications = [] }) {
   );
 }
 
-export function NotificationModal({ selectedNews, onClose }) {
+export function NotificationModal({ selectedNews: selNews, notification, onClose }) {
+  const selectedNews = selNews || notification;
   if (!selectedNews) return null;
 
   return (

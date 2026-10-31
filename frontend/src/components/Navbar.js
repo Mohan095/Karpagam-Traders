@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { NotificationModal, AllUpdatesModal } from './NotificationSection';
+import { NotificationTicker, NotificationModal, AllUpdatesModal } from './NotificationSection';
 
 function Navbar({ 
   user, 
@@ -16,12 +16,45 @@ function Navbar({
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const [selectedNotifForModal, setSelectedNotifForModal] = useState(null);
   const [allUpdatesModalOpen, setAllUpdatesModalOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const headerRef = useRef(null);
 
   const navigate = useNavigate();
   const location = useLocation();
 
   const isHomePage = location.pathname === '/';
   const activeNotifications = notifications.filter(n => n.is_active !== false);
+
+  // Measure exact header height and set --navbar-height CSS variable dynamically
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        const h = headerRef.current.offsetHeight;
+        if (h > 0) {
+          document.documentElement.style.setProperty('--navbar-height', `${h}px`);
+        }
+      }
+    };
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+    let ro;
+    if (window.ResizeObserver && headerRef.current) {
+      ro = new ResizeObserver(updateHeaderHeight);
+      ro.observe(headerRef.current);
+    }
+    return () => {
+      window.removeEventListener('resize', updateHeaderHeight);
+      if (ro) ro.disconnect();
+    };
+  }, [notifications]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 15);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleDropdown = (e) => {
     e.stopPropagation();
@@ -52,8 +85,19 @@ function Navbar({
 
   return (
     <>
-      <header id="navbar" className="navbar-header">
-        <div className="navbar-container">
+      <header id="navbar" ref={headerRef} className={`navbar-header ${isScrolled ? 'scrolled' : ''}`}>
+        {/* Top Live Announcement Ticker - Front View at the very top of header */}
+        <NotificationTicker 
+          notifications={notifications}
+          onSelectNotification={(notif) => {
+            setSelectedNotifForModal(notif);
+            const el = document.getElementById('notifications-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
+
+        <div className="navbar-main">
+          <div className="navbar-container">
           <button onClick={() => handleNavClick('/')} className="logo" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             <img 
               src="/logo.png" 
@@ -432,7 +476,8 @@ function Navbar({
             </div>
           </div>
         </div>
-      </header>
+      </div>
+    </header>
 
       {/* Detail Modal for update clicked in dropdown */}
       {selectedNotifForModal && (

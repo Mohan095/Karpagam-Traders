@@ -147,7 +147,7 @@ function ContactForm({ selectedService, onClearService, showAlert }) {
   };
 
   return (
-    <section className="contact-section" id="contact" style={{ paddingTop: '50px' }}>
+    <section className="contact-section" id="contact" style={{ paddingTop: 'calc(var(--navbar-height, 120px) + 55px)' }}>
       {/* Integrated About Us Company Banner */}
       <div className="about-company-banner scroll-reveal-fade revealed" style={{
         background: 'linear-gradient(135deg, rgba(139,0,0,0.05) 0%, rgba(220,38,38,0.08) 100%)',

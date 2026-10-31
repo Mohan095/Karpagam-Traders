@@ -24,11 +24,10 @@
   --shadow-sm: 0 4px 6px -1px rgba(139, 0, 0, 0.05), 0 2px 4px -1px rgba(139, 0, 0, 0.03);
   --shadow-md: 0 10px 15px -3px rgba(139, 0, 0, 0.08), 0 4px 6px -2px rgba(139, 0, 0, 0.05);
   --shadow-lg: 0 20px 25px -5px rgba(139, 0, 0, 0.1), 0 10px 10px -5px rgba(139, 0, 0, 0.04);
-  /* Legacy user root definitions */
-  --primary-color: #8B0000;
-  --secondary-color: #FDF5E6;
   --text-light: #666666;
   --white: #ffffff;
+  /* Dynamic Header Height Token */
+  --navbar-height: 120px;
 }
 
 /* --- Base Styles --- */
@@ -242,20 +241,30 @@ body {
 header.navbar-header {
   position: fixed;
   top: 0;
+  left: 0;
   width: 100%;
   z-index: 1000;
-  background: rgba(255, 253, 249, 0.95);
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.navbar-main {
+  width: 100%;
+  background: rgba(255, 253, 249, 0.96);
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   border-bottom: 1px solid var(--card-border);
   box-shadow: var(--shadow-sm);
-  padding: 15px 0;
+  padding: 14px 0;
+  transition: padding 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
 }
 
-header.navbar-header.scrolled {
-  padding: 15px 0;
-  box-shadow: var(--shadow-sm);
-  background: rgba(255, 253, 249, 0.95);
+header.navbar-header.scrolled .navbar-main {
+  padding: 10px 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .navbar-container {
@@ -583,7 +592,7 @@ header.navbar-header.scrolled {
 /* --- Hero Section --- */
 .hero-section {
   min-height: 85vh;
-  padding: 120px 24px 70px;
+  padding: calc(var(--navbar-height, 120px) + 55px) 24px 70px;
   display: flex;
   align-items: center;
   position: relative;
@@ -1176,6 +1185,11 @@ section {
 /* --- Showcase Section --- */
 .showcase-section {
   background: white;
+  padding: 40px 24px 80px;
+}
+
+section[id], div[id] {
+  scroll-margin-top: calc(var(--navbar-height, 120px) + 20px);
 }
 
 .calendar-grid {
@@ -1464,6 +1478,8 @@ section {
 
 /* --- Contact Section --- */
 .contact-section {
+  padding-top: calc(var(--navbar-height, 120px) + 55px);
+  padding-bottom: 80px;
   background: linear-gradient(135deg, #ffe6e6 0%, #fff2cc 100%);
   border-top: 1px solid rgba(139, 0, 0, 0.05);
 }
@@ -2444,7 +2460,10 @@ footer {
 
 @media (max-width: 768px) {
   header.navbar-header {
-    padding: 15px 0;
+    padding: 0;
+  }
+  .navbar-main {
+    padding: 12px 0;
   }
   .mobile-menu-toggle {
     display: flex;
@@ -2700,7 +2719,7 @@ body.modal-open {
 
 /* --- PRODUCTS & SHOP SECTION STYLES --- */
 .products-shop-wrapper {
-  padding: 80px 5%;
+  padding: calc(var(--navbar-height, 120px) + 55px) 5% 80px;
   background: var(--bg-gradient);
 }
 
@@ -4040,7 +4059,16 @@ body.modal-open {
 }
 
 .announcement-top-bar {
+  width: 100%;
+  box-sizing: border-box;
   animation: slideDownBar 0.3s ease-out;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .announcement-top-bar {
+    padding: 8px 10px !important;
+  }
 }
 
 @keyframes slideDownBar {
